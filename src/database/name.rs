@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
-use sea_query::Iden;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Model {
@@ -13,18 +12,4 @@ pub struct Model {
     pub time_registered: DateTime<Utc>,
     pub unpaid: Decimal,
     pub metadata: Option<String>,
-}
-
-#[derive(Debug, Iden)]
-pub enum Name {
-    Table,
-    Id,
-    LastTransfered,
-    LastUpdated,
-    Name,
-    Owner,
-    OriginalOwner,
-    TimeRegistered,
-    Unpaid,
-    Metadata,
 }
