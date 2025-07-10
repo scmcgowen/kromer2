@@ -4,6 +4,7 @@ use rust_decimal::Decimal;
 use sqlx::{MySql, Pool};
 
 use crate::database::ModelExt;
+use crate::utils::crypto;
 
 #[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
 pub struct Model {
@@ -14,6 +15,13 @@ pub struct Model {
     pub locked: bool,
     pub total_in: Decimal,
     pub total_out: Decimal,
+    pub private_key: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct VerifyResponse {
+    pub authed: bool,
+    pub address: Model,
 }
 
 #[async_trait]
@@ -74,5 +82,37 @@ impl Model {
             .bind(offset)
             .fetch_all(pool)
             .await
+    }
+
+    #[tracing::instrument(skip(pool))]
+    pub async fn verify_address<S: AsRef<str> + std::fmt::Debug>(
+        pool: &Pool<MySql>,
+        private_key: S,
+    ) -> sqlx::Result<VerifyResponse> {
+        let private_key = private_key.as_ref();
+
+        let address = crypto::make_v2_address(private_key, "k");
+        let guh = format!("{address}{private_key}");
+
+        tracing::info!("Authentication attempt on address {address}");
+
+        let result = Model::fetch_by_address(pool, address).await?;
+        let hash = crypto::sha256(&guh);
+
+        if result.is_none() {
+            todo!("Create a wallet");
+        }
+
+        let wallet = result.unwrap(); // It's fine to unwrap here, see above if statement, we checked if it exists or not.
+        let pkey = &wallet.private_key;
+        let authed = *pkey == Some(hash);
+        if !authed {
+            tracing::info!("Someone tried to login to an address they do not own");
+        }
+
+        return Ok(VerifyResponse {
+            authed,
+            address: wallet,
+        });
     }
 }
