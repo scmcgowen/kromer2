@@ -8,10 +8,8 @@ use sqlx::{MySql, Pool};
 
 #[async_trait::async_trait]
 pub trait ModelExt {
-    const TABLE: &'static str;
-
     /// Fetches a record from a table and returns it
-    async fn fetch_by_id(pool: &Pool<MySql>, id: i32) -> sqlx::Result<Option<Self>>
+    async fn fetch_by_id(pool: &Pool<MySql>, id: i64) -> sqlx::Result<Option<Self>>
     where
         Self: Sized;
 
