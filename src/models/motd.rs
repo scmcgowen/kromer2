@@ -1,6 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::fs;
-// use toml;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct DetailedMotdResponse {
