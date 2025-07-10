@@ -1,8 +1,8 @@
 use actix_web::{HttpResponse, get, web};
-use sea_query::{Asterisk, Expr, MysqlQueryBuilder, Query};
 
 use crate::AppState;
-use crate::database::wallet::{Model as WalletModel, Wallet};
+use crate::database::ModelExt;
+use crate::database::wallet::Model as Wallet;
 use crate::errors::krist::KristError;
 use crate::errors::krist::address::AddressError;
 use crate::models::addresses::{AddressJson, AddressListResponse, AddressResponse};
@@ -18,20 +18,23 @@ async fn wallet_list(
     let limit = pagination.limit.unwrap_or(50);
     let offset = pagination.offset.unwrap_or(0);
 
-    let count = Query::select()
-        .expr(Expr::col((Wallet::Table, Wallet::Id)).count())
-        .to_string(MysqlQueryBuilder);
+    let count = Wallet::total_count(&state.pool)
+        .await
+        .map_err(KristError::Database)?;
+    let wallets = Wallet::fetch_all(&state.pool, limit, offset)
+        .await
+        .map_err(KristError::Database)?;
 
-    let q = Query::select()
-        .column(Asterisk)
-        .from(Wallet::Table)
-        .limit(limit)
-        .offset(offset)
-        .to_string(MysqlQueryBuilder);
-    let wallets: Vec<WalletModel> = sqlx::query_as(&q).fetch_all(&state.pool).await?;
-    let wallets: Vec<AddressJson> = wallets.into_iter().map(|wallet| wallet.into()).collect();
+    let addresses: Vec<AddressJson> = wallets.into_iter().map(|wallet| wallet.into()).collect();
 
-    Ok(HttpResponse::Ok().json(wallets))
+    let list_response = AddressListResponse {
+        ok: true,
+        count,
+        total: addresses.len(),
+        addresses,
+    };
+
+    Ok(HttpResponse::Ok().json(list_response))
 }
 
 #[get("/{address}")]
@@ -41,12 +44,9 @@ async fn wallet_get(
 ) -> Result<HttpResponse, KristError> {
     let address = address.into_inner();
 
-    let q = Query::select()
-        .column(Asterisk)
-        .from(Wallet::Table)
-        .and_where(Expr::col(Wallet::Address).eq(&address))
-        .to_string(MysqlQueryBuilder);
-    let wallet: Option<WalletModel> = sqlx::query_as(&q).fetch_optional(&state.pool).await?;
+    let wallet = Wallet::fetch_by_address(&state.pool, &address)
+        .await
+        .map_err(KristError::Database)?;
 
     wallet
         .map(|addr| AddressResponse {
@@ -66,38 +66,42 @@ async fn wallet_richest(
     let limit = pagination.limit.unwrap_or(50);
     let offset = pagination.offset.unwrap_or(0);
 
-    let q = Query::select()
-        .column(Asterisk)
-        .from(Wallet::Table)
-        .order_by(Wallet::Balance, sea_query::Order::Desc)
-        .limit(limit)
-        .offset(offset)
-        .to_string(MysqlQueryBuilder);
-    let wallets: Vec<WalletModel> = sqlx::query_as(&q).fetch_all(&state.pool).await?;
-    let wallets: Vec<AddressJson> = wallets.into_iter().map(|wallet| wallet.into()).collect();
+    let total = Wallet::total_count(&state.pool)
+        .await
+        .map_err(KristError::Database)?;
+    let ordered_wallets = Wallet::fetch_richest(&state.pool, limit, offset)
+        .await
+        .map_err(KristError::Database)?;
+    let addresses: Vec<_> = ordered_wallets
+        .into_iter()
+        .map(|wallet| wallet.into())
+        .collect();
 
-    Ok(HttpResponse::Ok().json(wallets))
+    let response = AddressListResponse {
+        ok: true,
+        count: addresses.len(),
+        total,
+        addresses: addresses,
+    };
+
+    Ok(HttpResponse::Ok().json(response))
 }
 
 #[get("/{address}/transactions")]
 async fn wallet_get_transactions(
-    state: web::Data<AppState>,
-    address: web::Path<String>,
-    params: web::Query<AddressTransactionQuery>,
+    _state: web::Data<AppState>,
+    _address: web::Path<String>,
+    _params: web::Query<AddressTransactionQuery>,
 ) -> Result<HttpResponse, KristError> {
-    let mut conn = state.pool.acquire().await?;
-
     todo!()
 }
 
 #[get("/{address}/names")]
 async fn wallet_get_names(
-    state: web::Data<AppState>,
-    address: web::Path<String>,
-    params: web::Query<PaginationParams>,
+    _state: web::Data<AppState>,
+    _address: web::Path<String>,
+    _params: web::Query<PaginationParams>,
 ) -> Result<HttpResponse, KristError> {
-    let mut conn = state.pool.acquire().await?;
-
     todo!()
 }
 
