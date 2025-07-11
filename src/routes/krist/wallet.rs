@@ -1,12 +1,17 @@
 use actix_web::{HttpResponse, get, web};
 
 use crate::AppState;
-use crate::database::ModelExt;
-use crate::database::wallet::Model as Wallet;
+use crate::models::names::{NameJson, NameListResponse};
+
+use crate::database::{
+    ModelExt, name::Model as Name, transaction::Model as Transaction, wallet::Model as Wallet,
+};
 use crate::errors::krist::KristError;
 use crate::errors::krist::address::AddressError;
 use crate::models::addresses::{AddressJson, AddressListResponse, AddressResponse};
-use crate::models::transactions::AddressTransactionQuery;
+use crate::models::transactions::{
+    AddressTransactionQuery, TransactionJson, TransactionListResponse,
+};
 use crate::routes::PaginationParams;
 
 #[get("")]
@@ -18,12 +23,8 @@ async fn wallet_list(
     let limit = pagination.limit.unwrap_or(50);
     let offset = pagination.offset.unwrap_or(0);
 
-    let count = Wallet::total_count(&state.pool)
-        .await
-        .map_err(KristError::Database)?;
-    let wallets = Wallet::fetch_all(&state.pool, limit, offset)
-        .await
-        .map_err(KristError::Database)?;
+    let count = Wallet::total_count(&state.pool).await?;
+    let wallets = Wallet::fetch_all(&state.pool, limit, offset).await?;
 
     let addresses: Vec<AddressJson> = wallets.into_iter().map(|wallet| wallet.into()).collect();
 
@@ -44,9 +45,7 @@ async fn wallet_get(
 ) -> Result<HttpResponse, KristError> {
     let address = address.into_inner();
 
-    let wallet = Wallet::fetch_by_address(&state.pool, &address)
-        .await
-        .map_err(KristError::Database)?;
+    let wallet = Wallet::fetch_by_address(&state.pool, &address).await?;
 
     wallet
         .map(|addr| AddressResponse {
@@ -66,12 +65,8 @@ async fn wallet_richest(
     let limit = pagination.limit.unwrap_or(50);
     let offset = pagination.offset.unwrap_or(0);
 
-    let total = Wallet::total_count(&state.pool)
-        .await
-        .map_err(KristError::Database)?;
-    let ordered_wallets = Wallet::fetch_richest(&state.pool, limit, offset)
-        .await
-        .map_err(KristError::Database)?;
+    let total = Wallet::total_count(&state.pool).await?;
+    let ordered_wallets = Wallet::fetch_richest(&state.pool, limit, offset).await?;
     let addresses: Vec<_> = ordered_wallets
         .into_iter()
         .map(|wallet| wallet.into())
@@ -89,20 +84,60 @@ async fn wallet_richest(
 
 #[get("/{address}/transactions")]
 async fn wallet_get_transactions(
-    _state: web::Data<AppState>,
-    _address: web::Path<String>,
-    _params: web::Query<AddressTransactionQuery>,
+    state: web::Data<AppState>,
+    address: web::Path<String>,
+    params: web::Query<AddressTransactionQuery>,
 ) -> Result<HttpResponse, KristError> {
-    todo!()
+    let address = address.into_inner();
+    let params = params.into_inner();
+    let pool = &state.pool;
+
+    let tx = pool.begin().await?;
+
+    let total_transactions = Transaction::total_count(pool).await?;
+    let transactions = Wallet::transactions(pool, address, &params).await?;
+
+    tx.commit().await?;
+
+    let transactions: Vec<TransactionJson> =
+        transactions.into_iter().map(|trans| trans.into()).collect();
+
+    let response = TransactionListResponse {
+        ok: true,
+        count: transactions.len(),
+        total: total_transactions,
+        transactions,
+    };
+
+    Ok(HttpResponse::Ok().json(response))
 }
 
 #[get("/{address}/names")]
 async fn wallet_get_names(
-    _state: web::Data<AppState>,
-    _address: web::Path<String>,
-    _params: web::Query<PaginationParams>,
+    state: web::Data<AppState>,
+    address: web::Path<String>,
+    query: web::Query<PaginationParams>,
 ) -> Result<HttpResponse, KristError> {
-    todo!()
+    let address = address.into_inner();
+    let query = query.into_inner();
+    let pool = &state.pool;
+
+    let tx = pool.begin().await?;
+
+    let total_names = Name::total_count(pool).await?;
+    let names = Wallet::names(pool, address, &query).await?;
+
+    tx.commit().await?;
+
+    let names: Vec<NameJson> = names.into_iter().map(|trans| trans.into()).collect();
+    let response = NameListResponse {
+        ok: true,
+        count: names.len(),
+        total: total_names,
+        names,
+    };
+
+    Ok(HttpResponse::Ok().json(response))
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
