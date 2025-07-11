@@ -38,8 +38,8 @@ pub struct TransactionResponse {
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct AddressTransactionQuery {
-    pub limit: Option<usize>,
-    pub offset: Option<usize>,
+    pub limit: Option<i32>,
+    pub offset: Option<i32>,
     #[serde(rename = "includeMined")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_mined: Option<bool>,
