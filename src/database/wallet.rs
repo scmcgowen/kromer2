@@ -99,12 +99,13 @@ impl Model {
         let result = Model::fetch_by_address(pool, address).await?;
         let hash = crypto::sha256(&guh);
 
-        if result.is_none() {
-            todo!("Create a wallet");
-        }
-
-        let wallet = result.unwrap(); // It's fine to unwrap here, see above if statement, we checked if it exists or not.
+        let wallet = match result {
+            Some(w) => w,
+            None => todo!("call a function to create wallet")
+        };
+        
         let pkey = &wallet.private_key;
+        
         let authed = *pkey == Some(hash);
         if !authed {
             tracing::info!("Someone tried to login to an address they do not own");
