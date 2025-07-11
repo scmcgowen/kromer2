@@ -1,5 +1,5 @@
 use actix_web::{App, HttpServer, middleware, web};
-use sqlx::mysql::MySqlPool;
+use sqlx::postgres::PgPool;
 use std::env;
 
 use maria_kromer::{AppState, routes};
@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let server_url = env::var("SERVER_URL").expect("SERVER_URL is not set in .env file");
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
 
-    let pool = MySqlPool::connect(&database_url).await?;
+    let pool = PgPool::connect(&database_url).await?;
 
     let state = web::Data::new(AppState { pool });
 

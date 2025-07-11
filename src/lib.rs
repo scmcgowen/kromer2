@@ -1,4 +1,4 @@
-use sqlx::{MySql, Pool};
+use sqlx::{Pool, Postgres};
 
 pub mod database;
 pub mod errors;
@@ -9,5 +9,5 @@ pub mod websockets;
 
 #[derive(Debug)]
 pub struct AppState {
-    pub pool: Pool<MySql>,
+    pub pool: Pool<Postgres>,
 }

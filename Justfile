@@ -1,10 +1,10 @@
 set shell := ["sh", "-c"]
 set windows-shell := ["pwsh.exe", "-c"]
 
-# Start MariaDB as a service
+# Start Postgres as a service
 start-db:
-    sudo net start MariaDB
+    sudo net start postgresql-x64-17
 
-# Stop the MariaDB service
+# Stop the Postgres service
 stop-db:
-    sudo net stop MariaDB
+    sudo net stop postgresql-x64-17

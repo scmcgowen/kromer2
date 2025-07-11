@@ -4,22 +4,22 @@ pub mod transaction;
 pub mod wallet;
 
 use serde::{Deserialize, Serialize};
-use sqlx::{MySql, Pool};
+use sqlx::{Pool, Postgres};
 
 #[async_trait::async_trait]
 pub trait ModelExt {
     /// Fetches a record from a table and returns it
-    async fn fetch_by_id(pool: &Pool<MySql>, id: i64) -> sqlx::Result<Option<Self>>
+    async fn fetch_by_id(pool: &Pool<Postgres>, id: i64) -> sqlx::Result<Option<Self>>
     where
         Self: Sized;
 
     /// Fetches all records from a table and returns them
-    async fn fetch_all(pool: &Pool<MySql>, limit: u64, offset: u64) -> sqlx::Result<Vec<Self>>
+    async fn fetch_all(pool: &Pool<Postgres>, limit: i64, offset: i64) -> sqlx::Result<Vec<Self>>
     where
         Self: Sized;
 
     /// Fetches the total number of records in the table
-    async fn total_count(pool: &Pool<MySql>) -> sqlx::Result<usize>;
+    async fn total_count(pool: &Pool<Postgres>) -> sqlx::Result<usize>;
 }
 
 #[derive(
