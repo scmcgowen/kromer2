@@ -61,7 +61,7 @@ impl ModelExt for Model {
     where
         Self: Sized,
     {
-        let q = "SELECT * FROM transaction WHERE id = $1";
+        let q = "SELECT * FROM transactions WHERE id = $1";
 
         sqlx::query_as(q).bind(id).fetch_optional(pool).await
     }
@@ -71,7 +71,7 @@ impl ModelExt for Model {
         Self: Sized,
     {
         let limit = limit.clamp(0, 1000);
-        let q = "SELECT * from transaction LIMIT $1 OFFSET $2";
+        let q = "SELECT * from transactions LIMIT $1 OFFSET $2";
 
         sqlx::query_as(q)
             .bind(limit)
@@ -81,7 +81,7 @@ impl ModelExt for Model {
     }
 
     async fn total_count(pool: &Pool<Postgres>) -> sqlx::Result<usize> {
-        let q = "SELECT COUNT() FROM transaction";
+        let q = "SELECT COUNT(*) FROM transactions";
         let result: i64 = sqlx::query_scalar(q).fetch_one(pool).await?;
 
         Ok(result as usize)
