@@ -3,7 +3,9 @@ use chrono::{DateTime, Utc};
 use rust_decimal::{Decimal, dec};
 use sqlx::{Pool, Postgres};
 
-use crate::database::ModelExt;
+use crate::database::{ModelExt, name, transaction};
+use crate::models::transactions::AddressTransactionQuery;
+use crate::routes::PaginationParams;
 use crate::utils::crypto;
 
 #[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
@@ -39,7 +41,7 @@ impl ModelExt for Model {
     where
         Self: Sized,
     {
-        let limit = limit.clamp(0, 1000);
+        let limit = limit.clamp(1, 1000);
 
         let q = "SELECT * from wallets LIMIT $1 OFFSET $2";
 
@@ -74,7 +76,7 @@ impl Model {
         limit: i64,
         offset: i64,
     ) -> sqlx::Result<Vec<Self>> {
-        let limit = limit.clamp(0, 1000);
+        let limit = limit.clamp(1, 1000);
 
         let q = "SELECT * FROM wallets ORDER BY balance DESC LIMIT $1 OFFSET $2;";
         sqlx::query_as(q)
@@ -132,6 +134,51 @@ impl Model {
             .bind(initial_balance)
             .bind(hash)
             .fetch_one(pool)
+            .await
+    }
+
+    pub async fn transactions<S: AsRef<str>>(
+        pool: &Pool<Postgres>,
+        address: S,
+        query: &AddressTransactionQuery,
+    ) -> sqlx::Result<Vec<transaction::Model>> {
+        let address = address.as_ref().to_owned();
+
+        let limit = query.limit.unwrap_or(50);
+        let offset = query.offset.unwrap_or(0);
+        let limit = limit.clamp(1, 1000);
+
+        let q = r#"
+            SELECT * FROM transactions
+            WHERE "from" = $1 OR "to" = $1
+            ORDER BY date DESC
+            LIMIT $2 OFFSET $3;
+        "#;
+        sqlx::query_as(q)
+            .bind(address)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(pool)
+            .await
+    }
+
+    pub async fn names<S: AsRef<str>>(
+        pool: &Pool<Postgres>,
+        address: S,
+        query: &PaginationParams,
+    ) -> sqlx::Result<Vec<name::Model>> {
+        let address = address.as_ref().to_owned();
+
+        let limit = query.limit.unwrap_or(50);
+        let offset = query.offset.unwrap_or(0);
+        let limit = limit.clamp(1, 1000);
+
+        let q = r#"SELECT * FROM names WHERE owner = $1 ORDER BY name ASC LIMIT $2 OFFSET $3;"#;
+        sqlx::query_as(q)
+            .bind(address)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(pool)
             .await
     }
 }
