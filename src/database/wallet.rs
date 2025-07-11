@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
+use rust_decimal::{Decimal, dec};
 use sqlx::{MySql, Pool};
 
 use crate::database::ModelExt;
@@ -96,16 +96,16 @@ impl Model {
 
         tracing::info!("Authentication attempt on address {address}");
 
-        let result = Model::fetch_by_address(pool, address).await?;
+        let result = Model::fetch_by_address(pool, &address).await?;
         let hash = crypto::sha256(&guh);
 
         let wallet = match result {
             Some(w) => w,
-            None => todo!("call a function to create wallet")
+            None => Self::create_wallet(pool, &address, &hash, None).await?,
         };
-        
+
         let pkey = &wallet.private_key;
-        
+
         let authed = *pkey == Some(hash);
         if !authed {
             tracing::info!("Someone tried to login to an address they do not own");
@@ -115,5 +115,24 @@ impl Model {
             authed,
             address: wallet,
         });
+    }
+
+    pub async fn create_wallet(
+        pool: &Pool<MySql>,
+        address: &str,
+        hash: &str,
+        initial_balance: Option<Decimal>,
+    ) -> sqlx::Result<Model> {
+        let initial_balance = initial_balance.unwrap_or(dec!(0.0));
+
+        // Pretty big query, lol
+        let q = "INSERT INTO wallets(address, balance, created_at, private_key) VALUES (?, ?, NOW(), ?) RETURNING id, address, balance, created_at, locked, total_in, total_out, private_key;";
+
+        sqlx::query_as(q)
+            .bind(address)
+            .bind(initial_balance)
+            .bind(hash)
+            .fetch_one(pool)
+            .await
     }
 }
