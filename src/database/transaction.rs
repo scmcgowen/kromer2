@@ -61,7 +61,7 @@ impl ModelExt for Model {
     where
         Self: Sized,
     {
-        let q = "SELECT * FROM transaction WHERE id = ?";
+        let q = "SELECT * FROM transaction WHERE id = $1";
 
         sqlx::query_as(q).bind(id).fetch_optional(pool).await
     }

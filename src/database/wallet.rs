@@ -8,7 +8,7 @@ use crate::utils::crypto;
 
 #[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
 pub struct Model {
-    pub id: i64,
+    pub id: i32,
     pub address: String,
     pub balance: Decimal,
     pub created_at: DateTime<Utc>,
@@ -30,7 +30,7 @@ impl ModelExt for Model {
     where
         Self: Sized,
     {
-        let q = "SELECT * FROM wallets WHERE id = ?";
+        let q = "SELECT * FROM wallets WHERE id = $1";
 
         sqlx::query_as(q).bind(id).fetch_optional(pool).await
     }
@@ -41,7 +41,7 @@ impl ModelExt for Model {
     {
         let limit = limit.clamp(0, 1000);
 
-        let q = "SELECT * from wallets LIMIT ? OFFSET ?";
+        let q = "SELECT * from wallets LIMIT $1 OFFSET $2";
 
         sqlx::query_as(q)
             .bind(limit)
@@ -65,7 +65,7 @@ impl Model {
     ) -> sqlx::Result<Option<Self>> {
         let address = address.as_ref();
 
-        let q = "SELECT * FROM wallets WHERE address = ?;";
+        let q = "SELECT * FROM wallets WHERE address = $1;";
         sqlx::query_as(q).bind(address).fetch_optional(pool).await
     }
 
@@ -76,7 +76,7 @@ impl Model {
     ) -> sqlx::Result<Vec<Self>> {
         let limit = limit.clamp(0, 1000);
 
-        let q = "SELECT * FROM wallets ORDER BY balance DESC LIMIT ? OFFSET ?;";
+        let q = "SELECT * FROM wallets ORDER BY balance DESC LIMIT $1 OFFSET $2;";
         sqlx::query_as(q)
             .bind(limit)
             .bind(offset)
@@ -125,7 +125,7 @@ impl Model {
         let initial_balance = initial_balance.unwrap_or(dec!(0.0));
 
         // Pretty big query, lol
-        let q = "INSERT INTO wallets(address, balance, created_at, private_key) VALUES (?, ?, NOW(), ?) RETURNING *";
+        let q = "INSERT INTO wallets(address, balance, created_at, private_key) VALUES ($1, $2, NOW(), $3) RETURNING *";
 
         sqlx::query_as(q)
             .bind(address)
