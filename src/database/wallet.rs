@@ -23,7 +23,7 @@ pub struct Model {
 #[derive(Debug, Clone, PartialEq)]
 pub struct VerifyResponse {
     pub authed: bool,
-    pub address: Model,
+    pub model: Model,
 }
 
 #[async_trait]
@@ -114,7 +114,7 @@ impl Model {
 
         return Ok(VerifyResponse {
             authed,
-            address: wallet,
+            model: wallet,
         });
     }
 

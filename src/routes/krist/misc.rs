@@ -24,7 +24,7 @@ async fn login_address(
     let result = Wallet::verify_address(db, private_key).await?;
 
     Ok(HttpResponse::Ok().json(AddressAuthenticationResponse {
-        address: result.authed.then_some(result.address.address),
+        address: result.authed.then_some(result.model.address),
         authed: result.authed,
         ok: true,
     }))
