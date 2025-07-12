@@ -90,7 +90,7 @@ mod tests {
             },
         };
         let response_str = serde_json::to_string(&response).expect("Failed to serialize");
-        let response_str_test = r#"{"ok":true,"address":{"address":"kre3w0i79j","balance":86945,"totalin":123364,"totalout":38292,"firstseen":"2015-03-13T12:55:18.000Z"}}"#;
+        let response_str_test = r#"{"ok":true,"address":{"address":"kre3w0i79j","balance":86945.0,"totalin":123364.0,"totalout":38292.0,"firstseen":"2015-03-13T12:55:18.000Z"}}"#;
 
         assert_eq!(response_str, response_str_test);
     }
