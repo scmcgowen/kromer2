@@ -3,7 +3,7 @@
 // Example:
 [
   {
-    "label": "kromer: Start MariaDB",
+    "label": "kromer: Start PostgreSQL",
     "command": "just start-db",
     "use_new_terminal": false,
     "allow_concurrent_runs": false,
@@ -13,7 +13,7 @@
     "shell": "system"
   },
   {
-    "label": "kromer: Stop MariaDB",
+    "label": "kromer: Stop PostgreSQL",
     "command": "just stop-db",
     "use_new_terminal": false,
     "allow_concurrent_runs": false,
