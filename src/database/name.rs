@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use sqlx::{Pool, Postgres};
 
-use crate::database::ModelExt;
+use crate::{database::ModelExt, routes::PaginationParams};
 
 #[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
 pub struct Model {
@@ -48,5 +48,37 @@ impl ModelExt for Model {
         let result: i64 = sqlx::query_scalar(q).fetch_one(pool).await?;
 
         Ok(result as usize)
+    }
+}
+
+impl Model {
+    /// Get name from its name field
+    pub async fn get_by_name(pool: &Pool<Postgres>, name: String) -> sqlx::Result<Option<Model>> {
+        let q = "SELECT * FROM name WHERE name = $1;";
+
+        sqlx::query_as(q).bind(name).fetch_optional(pool).await
+    }
+
+    pub async fn all_unpaid(
+        pool: &Pool<Postgres>,
+        pagination: &PaginationParams,
+    ) -> sqlx::Result<Vec<Model>> {
+        let limit = pagination.limit.unwrap_or(50);
+        let offset = pagination.offset.unwrap_or(0);
+        let limit = limit.clamp(1, 1000);
+
+        let q = "SELECT * FROM names WHERE unpaid > 0 LIMIT $1 OFFSET $2";
+
+        sqlx::query_as(q)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(pool)
+            .await
+    }
+
+    pub async fn count_unpaid(pool: &Pool<Postgres>) -> sqlx::Result<i64> {
+        let q = "SELECT count(*) FROM names WHERE unpaid > 0";
+
+        sqlx::query_scalar(q).fetch_one(pool).await
     }
 }
