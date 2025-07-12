@@ -155,6 +155,7 @@ impl TransactionNameData {
     ///
     /// # Examples
     /// ```
+    /// use maria_kromer::database::transaction::TransactionNameData;
     /// let data = TransactionNameData::parse("meta@name.kst");
     /// assert_eq!(data.meta, Some("meta".to_string()));
     /// assert_eq!(data.name, Some("name".to_string()));
@@ -185,6 +186,7 @@ impl TransactionNameData {
     ///
     /// # Examples
     /// ```
+    /// use maria_kromer::database::transaction::TransactionNameData;
     /// let data = TransactionNameData::parse_opt(Some("meta@name.kst"));
     /// assert_eq!(data.meta, Some("meta".to_string()));
     /// assert_eq!(data.name, Some("name".to_string()));
@@ -207,6 +209,7 @@ impl TransactionNameData {
     ///
     /// # Examples
     /// ```
+    /// use maria_kromer::database::transaction::TransactionNameData;
     /// let input = Some("meta@name.kst".to_string());
     /// let data = TransactionNameData::parse_opt_ref(&input);
     /// assert_eq!(data.meta, Some("meta".to_string()));
