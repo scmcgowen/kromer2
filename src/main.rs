@@ -2,7 +2,7 @@ use actix_web::{App, HttpServer, middleware, web};
 use sqlx::postgres::PgPool;
 use std::env;
 
-use maria_kromer::{AppState, routes};
+use maria_kromer::{AppState, routes, websockets::WebSocketServer};
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -15,11 +15,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let pool = PgPool::connect(&database_url).await?;
 
+    let krist_ws_server = WebSocketServer::new();
     let state = web::Data::new(AppState { pool });
 
     let http_server = HttpServer::new(move || {
         App::new()
             .app_data(state.clone())
+            .app_data(web::Data::new(krist_ws_server.clone()))
             .wrap(middleware::Logger::default())
             .wrap(middleware::NormalizePath::trim())
             .configure(routes::config)

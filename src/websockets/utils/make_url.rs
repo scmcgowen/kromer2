@@ -11,6 +11,7 @@ pub fn make_url(uuid: Uuid) -> Result<String, KromerError> {
     } else {
         "wss"
     };
+
     let server_url = env::var("PUBLIC_URL")
         .map_err(|_| KromerError::WebSocket(WebSocketError::ServerConfigError))?;
 
