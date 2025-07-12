@@ -37,7 +37,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: rust-build-${{ runner.os }}-${{ hashFiles('Cargo.toml') }}
-          path: target/release/maria-kromer${{ runner.os == 'windows-latest' && '.exe' || '' }}
+          name: rust-build-${{ runner.os }}
+          path: target/release/maria-kromer${{ runner.os == 'Windows' && '.exe' || '' }}
           if-no-files-found: error
           retention-days: 10
