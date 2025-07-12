@@ -38,6 +38,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rust-build-${{ runner.os }}-${{ hashFiles('Cargo.toml') }}
-          path: target/release/${{ github.event.repository.name }}${{ runner.os == 'windows-latest' && '.exe' || '' }}
+          path: target/release/maria-kromer${{ runner.os == 'windows-latest' && '.exe' || '' }}
           if-no-files-found: error
           retention-days: 10
