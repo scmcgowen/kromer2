@@ -4,7 +4,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Postgres};
+use sqlx::{Encode, Pool, Postgres, Type};
 
 use crate::{database::ModelExt, routes::PaginationParams};
 
@@ -77,11 +77,11 @@ impl From<TransactionType> for &str {
 }
 
 #[async_trait]
-impl ModelExt for Model {
-    async fn fetch_by_id(pool: &Pool<Postgres>, id: i64) -> sqlx::Result<Option<Self>>
-    where
-        Self: Sized,
-    {
+impl<'q> ModelExt<'q> for Model {
+    async fn fetch_by_id<T: 'q + Encode<'q, Postgres> + Type<Postgres> + Send>(
+        pool: &Pool<Postgres>,
+        id: T,
+    ) -> sqlx::Result<Option<Model>> {
         let q = "SELECT * FROM transactions WHERE id = $1";
 
         sqlx::query_as(q).bind(id).fetch_optional(pool).await

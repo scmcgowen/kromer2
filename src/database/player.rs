@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use sqlx::{Pool, Postgres};
+use sqlx::{Encode, Pool, Postgres, Type};
 use uuid::Uuid;
 
 use crate::database::ModelExt;
@@ -11,11 +11,11 @@ pub struct Model {
 }
 
 #[async_trait]
-impl ModelExt for Model {
-    async fn fetch_by_id(pool: &Pool<Postgres>, id: i64) -> sqlx::Result<Option<Self>>
-    where
-        Self: Sized,
-    {
+impl<'q> ModelExt<'q> for Model {
+    async fn fetch_by_id<T: 'q + Encode<'q, Postgres> + Type<Postgres> + Send>(
+        pool: &Pool<Postgres>,
+        id: T,
+    ) -> sqlx::Result<Option<Model>> {
         let q = "SELECT * FROM players WHERE id = $1";
 
         sqlx::query_as(q).bind(id).fetch_optional(pool).await

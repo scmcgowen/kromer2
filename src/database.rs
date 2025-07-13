@@ -3,12 +3,15 @@ pub mod player;
 pub mod transaction;
 pub mod wallet;
 
-use sqlx::{Pool, Postgres};
+use sqlx::{Encode, Pool, Postgres, prelude::Type};
 
 #[async_trait::async_trait]
-pub trait ModelExt {
+pub trait ModelExt<'q> {
     /// Fetches a record from a table and returns it
-    async fn fetch_by_id(pool: &Pool<Postgres>, id: i64) -> sqlx::Result<Option<Self>>
+    async fn fetch_by_id<T: 'q + Encode<'q, Postgres> + Type<Postgres> + Send>(
+        pool: &Pool<Postgres>,
+        id: T,
+    ) -> sqlx::Result<Option<Self>>
     where
         Self: Sized;
 
