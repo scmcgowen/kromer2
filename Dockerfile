@@ -26,6 +26,7 @@ RUN cargo build --release
 
 FROM debian:bookworm-slim AS runtime
 WORKDIR /kromer
+RUN apt-get update && apt-get install -y pkg-config openssl libssl-dev && rm -rf /var/lib/apt/lists/*
 COPY migrations .
 COPY --from=builder /usr/src/kromer/target/release/kromer /usr/local/bin
 # COPY --from=astro-base /usr/src/astro/dist /kromer/docs/dist
