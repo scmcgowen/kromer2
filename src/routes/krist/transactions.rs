@@ -11,6 +11,8 @@ use crate::errors::krist::transaction::TransactionError;
 use crate::models::transactions::{
     TransactionDetails, TransactionJson, TransactionListResponse, TransactionResponse,
 };
+use crate::models::websockets::{WebSocketEvent, WebSocketMessage};
+use crate::websockets::WebSocketServer;
 use crate::{AppState, errors::krist::KristError, routes::PaginationParams};
 
 #[get("")]
@@ -31,9 +33,6 @@ pub async fn transaction_list(
 
     tx.commit().await?;
 
-    // let total = Transaction::count(db).await?;
-
-    // let transactions = Transaction::all(db, &params).await?;
     let transactions: Vec<TransactionJson> =
         transactions.into_iter().map(|trans| trans.into()).collect();
 
@@ -50,7 +49,7 @@ pub async fn transaction_list(
 #[post("")]
 async fn transaction_create(
     state: web::Data<AppState>,
-    // server: web::Data<WebSocketServer>,
+    server: web::Data<WebSocketServer>,
     details: web::Json<TransactionDetails>,
 ) -> Result<HttpResponse, KristError> {
     let details = details.into_inner();
@@ -83,16 +82,17 @@ async fn transaction_create(
         transaction_type: TransactionType::Transfer,
     };
     let transaction = Transaction::create(pool, creation_data).await?;
+    let transaction_json: TransactionJson = transaction.into();
 
     // TODO: WebSockets.
-    // let event = WebSocketMessage::new_event(WebSocketEvent::Transaction {
-    //     transaction: response.clone(),
-    // });
-    // server.broadcast_event(event).await;
+    let event = WebSocketMessage::new_event(WebSocketEvent::Transaction {
+        transaction: transaction_json.clone(),
+    });
+    server.broadcast_event(event).await;
 
     let final_response = TransactionResponse {
         ok: true,
-        transaction: transaction.into(),
+        transaction: transaction_json,
     };
 
     Ok(HttpResponse::Ok().json(final_response))
