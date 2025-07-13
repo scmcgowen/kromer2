@@ -3,7 +3,15 @@ use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use sqlx::{Pool, Postgres};
 
-use crate::{database::ModelExt, routes::PaginationParams};
+use crate::database::wallet::Model as Wallet;
+
+use crate::{
+    database::ModelExt,
+    errors::krist::{KristError, address::AddressError, generic::GenericError, name::NameError},
+    models::names::NameDataUpdateBody,
+    routes::PaginationParams,
+    utils::validation,
+};
 
 #[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
 pub struct Model {
@@ -53,7 +61,11 @@ impl ModelExt for Model {
 
 impl Model {
     /// Get name from its name field
-    pub async fn get_by_name(pool: &Pool<Postgres>, name: String) -> sqlx::Result<Option<Model>> {
+    pub async fn fetch_by_name<S: AsRef<str>>(
+        pool: &Pool<Postgres>,
+        name: S,
+    ) -> sqlx::Result<Option<Model>> {
+        let name = name.as_ref();
         let q = "SELECT * FROM name WHERE name = $1;";
 
         sqlx::query_as(q).bind(name).fetch_optional(pool).await
@@ -80,5 +92,78 @@ impl Model {
         let q = "SELECT count(*) FROM names WHERE unpaid > 0";
 
         sqlx::query_scalar(q).fetch_one(pool).await
+    }
+
+    pub async fn create(pool: &Pool<Postgres>, name: String, owner: String) -> sqlx::Result<Model> {
+        let q = "INSERT INTO names(name, owner, original_owner, time_registered) VALUES ($1, $2, $2, NOW()) RETURNING *";
+
+        sqlx::query_as(q)
+            .bind(name)
+            .bind(owner)
+            .fetch_one(pool)
+            .await
+    }
+
+    pub async fn update_metadata(
+        pool: &Pool<Postgres>,
+        name: String,
+        metadata: String,
+    ) -> sqlx::Result<Model> {
+        let q = "UPDATE names SET metadata = $2 WHERE name = $1 RETURNING *";
+
+        sqlx::query_as(q)
+            .bind(name)
+            .bind(metadata)
+            .fetch_one(pool)
+            .await
+    }
+
+    pub async fn ctrl_update_metadata(
+        pool: &Pool<Postgres>,
+        name: String,
+        body: NameDataUpdateBody,
+    ) -> Result<Model, KristError> {
+        let metadata_record = match body.a {
+            Some(metadata_record) => metadata_record,
+            None => {
+                return Err(KristError::Generic(GenericError::InvalidParameter(
+                    "name".to_owned(),
+                )));
+            }
+        };
+
+        if !validation::is_valid_name(&name, false) {
+            return Err(KristError::Generic(GenericError::InvalidParameter(
+                "name".to_owned(),
+            )));
+        }
+
+        if !validation::is_valid_a_record(&metadata_record) {
+            return Err(KristError::Generic(GenericError::InvalidParameter(
+                "a".to_owned(),
+            )));
+        }
+
+        let name = name.trim().to_lowercase();
+        let wallet = Wallet::verify_address(pool, body.private_key).await?;
+        if !wallet.authed {
+            tracing::info!("Auth failed on name update");
+            return Err(KristError::Address(AddressError::AuthFailed));
+        }
+
+        let model = Model::fetch_by_name(pool, &name)
+            .await?
+            .ok_or_else(|| KristError::Name(NameError::NameNotFound(name.clone())))?;
+        if model.owner != wallet.model.address {
+            return Err(KristError::Name(NameError::NotNameOwner(name)));
+        }
+
+        if model.metadata == Some(metadata_record.clone()) {
+            return Ok(model);
+        }
+
+        let updated_model = Self::update_metadata(pool, name, metadata_record).await?;
+
+        Ok(updated_model)
     }
 }
