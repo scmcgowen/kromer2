@@ -1,9 +1,10 @@
-pub mod krist;
+mod internal;
+mod krist;
 mod not_found;
 
 use actix_web::{HttpResponse, get, web};
 
-use crate::errors::krist::KristError;
+use crate::{errors::krist::KristError, guards};
 
 #[get("/")]
 pub async fn index_get() -> Result<HttpResponse, KristError> {
@@ -13,11 +14,11 @@ pub async fn index_get() -> Result<HttpResponse, KristError> {
 pub fn config(cfg: &mut web::ServiceConfig) {
     // cfg.service(web::scope("/api/v1").configure(v1::config));
     cfg.service(web::scope("/api/krist").configure(krist::config));
-    // cfg.service(
-    //     web::scope("/api/_internal")
-    //         .guard(guards::internal_key_guard)
-    //         .configure(internal::config),
-    // );
+    cfg.service(
+        web::scope("/api/_internal")
+            .guard(guards::internal_key_guard)
+            .configure(internal::config),
+    );
     cfg.service(web::scope("").service(index_get));
 }
 
