@@ -4,6 +4,8 @@ use rust_decimal::{Decimal, dec};
 use sqlx::{Encode, Executor, Postgres, Type};
 
 use crate::database::{ModelExt, name, transaction};
+use crate::errors::KromerError;
+use crate::errors::wallet::WalletError;
 use crate::models::transactions::AddressTransactionQuery;
 use crate::routes::PaginationParams;
 use crate::utils::crypto;
@@ -199,13 +201,38 @@ impl<'q> Model {
             .await
     }
 
-    async fn update_balance<S, E>(pool: &mut E, address: S, balance: Decimal) -> sqlx::Result<Model>
+    pub async fn update_balance<S, E>(
+        pool: &mut E,
+        address: S,
+        balance: Decimal,
+    ) -> Result<Model, KromerError>
     where
         S: AsRef<str>,
-        E: 'q + Executor<'q, Database = Postgres>,
+        E: 'q + Executor<'q, Database = Postgres> + Copy,
     {
         let address = address.as_ref();
 
-        todo!()
+        // Just make sure that wallet exists
+        // TODO: Make a generic function on ModelExt trait that returns whether or not something exists.
+        let _wallet = Self::fetch_by_address(*pool, address)
+            .await?
+            .ok_or_else(|| KromerError::Wallet(WalletError::NotFound))?;
+
+        let q = r#"
+        UPDATE wallets
+        SET
+            balance = balance + $1,
+            total_in = total_in + CASE WHEN $1 > 0 THEN $1 ELSE 0 END,
+            total_out = total_out + CASE WHEN $1 < 0 THEN $1 ELSE 0 END
+        WHERE address = $2
+        RETURNING *;
+        "#;
+
+        sqlx::query_as(q)
+            .bind(balance)
+            .bind(address)
+            .fetch_one(*pool)
+            .await
+            .map_err(KromerError::Database)
     }
 }

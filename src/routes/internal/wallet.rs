@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::database::wallet::Model as Wallet;
 
 use crate::database::ModelExt;
+use crate::errors::wallet::WalletError;
 use crate::{
     AppState,
     errors::{KromerError, transaction::TransactionError},
@@ -45,14 +46,20 @@ async fn wallet_give_money(
     state: web::Data<AppState>,
     data: web::Json<GiveMoneyReq>,
 ) -> Result<HttpResponse, KromerError> {
-    let pool = &state.pool;
+    let mut pool = &state.pool;
     let data = data.into_inner();
 
     if data.amount < dec!(0.0) {
         return Err(KromerError::Transaction(TransactionError::InvalidAmount));
     }
 
-    todo!()
+    let updated_wallet = Wallet::update_balance(&mut pool, data.address, data.amount)
+        .await
+        .map_err(|_| KromerError::Wallet(WalletError::NotFound))?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "wallet": updated_wallet
+    })))
 }
 
 #[get("/by-player/{uuid}")]
