@@ -139,7 +139,7 @@ impl Model {
     ) -> sqlx::Result<Model> {
         let metadata = creation_data.metadata.unwrap_or_default();
 
-        let q = r#"INSERT INTO transactions(amount, "from", "to", metadata, transaction_type, date) VALUES ($1, $2, $3, $4, $5, NOW())"#;
+        let q = r#"INSERT INTO transactions(amount, "from", "to", metadata, transaction_type, date) VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING *"#;
 
         sqlx::query_as(q)
             .bind(creation_data.amount)
