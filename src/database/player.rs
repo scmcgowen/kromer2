@@ -3,11 +3,13 @@ use sqlx::{Encode, Executor, Postgres, Type};
 use uuid::Uuid;
 
 use crate::database::ModelExt;
+use crate::database::wallet::Model as Wallet;
 
 #[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
 pub struct Model {
     pub id: Uuid,
     pub name: String,
+    pub owned_wallets: Vec<i32>,
 }
 
 #[async_trait]
@@ -46,5 +48,37 @@ impl<'q> ModelExt<'q> for Model {
         let result: i64 = sqlx::query_scalar(q).fetch_one(pool).await?;
 
         Ok(result as usize)
+    }
+}
+
+impl<'q> Model {
+    pub async fn create<E>(executor: E, uuid: Uuid, name: String) -> sqlx::Result<Model>
+    where
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
+        let q = "INSERT INTO players(id, name) VALUES ($1, $2) RETURNING *";
+
+        sqlx::query_as(q)
+            .bind(uuid)
+            .bind(name)
+            .fetch_one(executor)
+            .await
+    }
+
+    pub async fn add_wallet_to_owned<E>(
+        executor: E,
+        uuid: Uuid,
+        wallet: &Wallet,
+    ) -> sqlx::Result<Model>
+    where
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
+        let q = "UPDATE players SET owned_wallets = array_append(array_column, $2) WHERE id = $1;";
+
+        sqlx::query_as(q)
+            .bind(uuid)
+            .bind(wallet.id)
+            .fetch_one(executor)
+            .await
     }
 }
