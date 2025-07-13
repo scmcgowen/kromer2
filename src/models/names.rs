@@ -33,6 +33,18 @@ pub struct DetailedUnpaidResponseRow {
     pub unpaid: i64,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NameAvailablityResponse {
+    pub ok: bool,
+    pub available: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NameBonusResponse {
+    pub ok: bool,
+    pub name_bonus: i64,
+}
+
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct RegisterNameRequest {
     //#[serde(rename = "desiredName")]
