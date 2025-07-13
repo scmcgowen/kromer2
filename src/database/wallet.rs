@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use rust_decimal::{Decimal, dec};
-use sqlx::{Encode, Executor, Postgres, Type};
+use sqlx::{Encode, Executor, Pool, Postgres, Type};
 
 use crate::database::{ModelExt, name, transaction};
 use crate::errors::KromerError;
@@ -71,7 +71,7 @@ impl<'q> Model {
     pub async fn fetch_by_address<S, E>(pool: E, address: S) -> sqlx::Result<Option<Self>>
     where
         S: AsRef<str>,
-        E: 'q + Executor<'q, Database = Postgres> + Copy,
+        E: 'q + Executor<'q, Database = Postgres>,
     {
         let address = address.as_ref();
 
@@ -81,7 +81,7 @@ impl<'q> Model {
 
     pub async fn fetch_richest<E>(pool: E, limit: i64, offset: i64) -> sqlx::Result<Vec<Self>>
     where
-        E: 'q + Executor<'q, Database = Postgres> + Copy,
+        E: 'q + Executor<'q, Database = Postgres>,
     {
         let limit = limit.clamp(1, 1000);
 
@@ -94,24 +94,27 @@ impl<'q> Model {
     }
 
     #[tracing::instrument(skip(pool))]
-    pub async fn verify_address<S, E>(pool: E, private_key: S) -> sqlx::Result<VerifyResponse>
+    pub async fn verify_address<S>(
+        pool: &Pool<Postgres>,
+        private_key: S,
+    ) -> sqlx::Result<VerifyResponse>
     where
         S: AsRef<str> + std::fmt::Debug,
-        E: 'q + Executor<'q, Database = Postgres> + Copy,
     {
         let private_key = private_key.as_ref();
+        let mut tx = pool.acquire().await?;
 
         let address = crypto::make_v2_address(private_key, "k");
         let guh = format!("{address}{private_key}");
 
         tracing::info!("Authentication attempt on address {address}");
 
-        let result = Model::fetch_by_address(pool, &address).await?;
+        let result = Model::fetch_by_address(&mut *tx, &address).await?;
         let hash = crypto::sha256(&guh);
 
         let wallet = match result {
             Some(w) => w,
-            None => Self::create_wallet(pool, &address, &hash, None).await?,
+            None => Self::create_wallet(&mut *tx, &address, &hash, None).await?,
         };
         let pkey = &wallet.private_key;
 
@@ -133,7 +136,7 @@ impl<'q> Model {
         initial_balance: Option<Decimal>,
     ) -> sqlx::Result<Model>
     where
-        E: 'q + Executor<'q, Database = Postgres> + Copy,
+        E: 'q + Executor<'q, Database = Postgres>,
     {
         let initial_balance = initial_balance.unwrap_or(dec!(0.0));
 
@@ -201,20 +204,19 @@ impl<'q> Model {
             .await
     }
 
-    pub async fn update_balance<S, E>(
-        pool: &mut E,
+    pub async fn update_balance<S>(
+        executor: &Pool<Postgres>,
         address: S,
         balance: Decimal,
     ) -> Result<Model, KromerError>
     where
         S: AsRef<str>,
-        E: 'q + Executor<'q, Database = Postgres> + Copy,
     {
         let address = address.as_ref();
 
         // Just make sure that wallet exists
         // TODO: Make a generic function on ModelExt trait that returns whether or not something exists.
-        let _wallet = Self::fetch_by_address(*pool, address)
+        let _wallet = Self::fetch_by_address(executor, address)
             .await?
             .ok_or_else(|| KromerError::Wallet(WalletError::NotFound))?;
 
@@ -231,7 +233,7 @@ impl<'q> Model {
         sqlx::query_as(q)
             .bind(balance)
             .bind(address)
-            .fetch_one(*pool)
+            .fetch_one(executor)
             .await
             .map_err(KromerError::Database)
     }

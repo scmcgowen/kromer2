@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
-use sqlx::{Encode, Executor, Postgres, Type};
+use sqlx::{Encode, Executor, Pool, Postgres, Type};
 
 use crate::database::wallet::Model as Wallet;
 
@@ -130,14 +130,11 @@ impl<'q> Model {
             .await
     }
 
-    pub async fn ctrl_update_metadata<E>(
-        pool: E,
+    pub async fn ctrl_update_metadata(
+        pool: &Pool<Postgres>,
         name: String,
         body: NameDataUpdateBody,
-    ) -> Result<Model, KristError>
-    where
-        E: 'q + Executor<'q, Database = Postgres> + Copy,
-    {
+    ) -> Result<Model, KristError> {
         let metadata_record = match body.a {
             Some(metadata_record) => metadata_record,
             None => {
