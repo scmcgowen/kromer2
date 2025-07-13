@@ -4,10 +4,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
 
+use crate::database::player::Model as Player;
 use crate::database::wallet::Model as Wallet;
 
 use crate::database::ModelExt;
 use crate::errors::wallet::WalletError;
+use crate::models::addresses::AddressCreationResponse;
+use crate::utils::crypto::generate_random_password;
 use crate::{
     AppState,
     errors::{KromerError, transaction::TransactionError},
@@ -16,7 +19,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct MinecraftUser {
     pub name: String,
-    pub mc_uuid: String,
+    pub uuid: Uuid,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -38,7 +41,24 @@ async fn wallet_create(
     let pool = &state.pool;
     let user = user.into_inner();
 
-    todo!()
+    let password = generate_random_password();
+
+    // TODO: Figure out how to use a transaction for this. Previous attempts were a pain in the ass. I do not want to touch this. ~sov
+
+    // I really dont like how this is done, oh well lol.
+    let _player_model = Player::create(pool, user.uuid, user.name).await?;
+    let wallet_verification_response = Wallet::verify_address(pool, &password).await?;
+
+    let wallet = wallet_verification_response.model;
+    let updated_wallet = Wallet::set_balance(pool, wallet.address, dec!(100)).await?;
+    let _updated_player = Player::add_wallet_to_owned(pool, user.uuid, &updated_wallet).await?;
+
+    let resp = AddressCreationResponse {
+        password,
+        address: updated_wallet.address,
+    };
+
+    Ok(HttpResponse::Ok().json(resp))
 }
 
 #[post("/give-money")]
@@ -46,14 +66,14 @@ async fn wallet_give_money(
     state: web::Data<AppState>,
     data: web::Json<GiveMoneyReq>,
 ) -> Result<HttpResponse, KromerError> {
-    let mut pool = &state.pool;
+    let pool = &state.pool;
     let data = data.into_inner();
 
     if data.amount < dec!(0.0) {
         return Err(KromerError::Transaction(TransactionError::InvalidAmount));
     }
 
-    let updated_wallet = Wallet::update_balance(&mut pool, data.address, data.amount)
+    let updated_wallet = Wallet::update_balance(pool, data.address, data.amount)
         .await
         .map_err(|_| KromerError::Wallet(WalletError::NotFound))?;
 

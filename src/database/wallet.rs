@@ -204,6 +204,32 @@ impl<'q> Model {
             .await
     }
 
+    pub async fn set_balance<S>(
+        executor: &Pool<Postgres>,
+        address: S,
+        balance: Decimal,
+    ) -> Result<Model, KromerError>
+    where
+        S: AsRef<str>,
+    {
+        let address = address.as_ref();
+
+        // Just make sure that wallet exists
+        // TODO: Make a generic function on ModelExt trait that returns whether or not something exists.
+        let _wallet = Self::fetch_by_address(executor, address)
+            .await?
+            .ok_or_else(|| KromerError::Wallet(WalletError::NotFound))?;
+
+        let q = "UPDATE wallets SET balance = $1 WHERE address = $2 RETURNING *";
+
+        sqlx::query_as(q)
+            .bind(balance)
+            .bind(address)
+            .fetch_one(executor)
+            .await
+            .map_err(KromerError::Database)
+    }
+
     pub async fn update_balance<S>(
         executor: &Pool<Postgres>,
         address: S,
