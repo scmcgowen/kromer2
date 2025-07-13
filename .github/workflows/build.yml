@@ -2,9 +2,9 @@ name: Rust Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
-        rust-version: ['stable']
+        rust-version: ["stable"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
