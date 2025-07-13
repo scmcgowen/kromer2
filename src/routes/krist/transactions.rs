@@ -26,10 +26,10 @@ pub async fn transaction_list(
     let limit = params.limit.unwrap_or(50);
     let offset = params.offset.unwrap_or(0);
 
-    let tx = pool.begin().await?;
+    let mut tx = pool.begin().await?;
 
-    let total_transaction = Transaction::total_count(pool).await?;
-    let transactions = Transaction::fetch_all(pool, limit, offset).await?;
+    let total_transaction = Transaction::total_count(&mut *tx).await?;
+    let transactions = Transaction::fetch_all(&mut *tx, limit, offset).await?;
 
     tx.commit().await?;
 

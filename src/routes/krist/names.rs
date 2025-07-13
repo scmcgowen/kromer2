@@ -29,10 +29,10 @@ async fn name_list(
     let limit = params.limit.unwrap_or(50);
     let offset = params.offset.unwrap_or(0);
 
-    let tx = pool.begin().await?;
+    let mut tx = pool.begin().await?;
 
-    let total = Name::total_count(pool).await?;
-    let names = Name::fetch_all(pool, limit, offset).await?;
+    let total = Name::total_count(&mut *tx).await?;
+    let names = Name::fetch_all(&mut *tx, limit, offset).await?;
 
     tx.commit().await?;
 
@@ -103,10 +103,10 @@ async fn name_new(
     let params = query.into_inner();
     let pool = &state.pool;
 
-    let tx = pool.begin().await?;
+    let mut tx = pool.begin().await?;
 
-    let total = Name::total_count(pool).await?;
-    let names = Name::all_unpaid(pool, &params).await?;
+    let total = Name::total_count(&mut *tx).await?;
+    let names = Name::all_unpaid(&mut *tx, &params).await?;
 
     tx.commit().await?;
 
@@ -222,11 +222,12 @@ async fn name_update_data(
     name: web::Path<String>,
     body: web::Json<NameDataUpdateBody>,
 ) -> Result<HttpResponse, KristError> {
-    let db = &state.pool;
+    let pool = &state.pool;
     let name = name.into_inner();
     let body = body.into_inner();
 
-    let model = Name::ctrl_update_metadata(db, name, body).await?;
+    let model = Name::ctrl_update_metadata(pool, name, body).await?;
+
     let name: NameJson = model.into();
     let resp = NameResponse { ok: true, name };
 

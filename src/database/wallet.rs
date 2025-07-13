@@ -1,14 +1,14 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use rust_decimal::{Decimal, dec};
-use sqlx::{Encode, Pool, Postgres, Type};
+use sqlx::{Encode, Executor, Postgres, Type};
 
 use crate::database::{ModelExt, name, transaction};
 use crate::models::transactions::AddressTransactionQuery;
 use crate::routes::PaginationParams;
 use crate::utils::crypto;
 
-#[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, sqlx::FromRow, serde::Serialize)]
 pub struct Model {
     pub id: i32,
     pub address: String,
@@ -28,21 +28,23 @@ pub struct VerifyResponse {
 
 #[async_trait]
 impl<'q> ModelExt<'q> for Model {
-    async fn fetch_by_id<T: 'q + Encode<'q, Postgres> + Type<Postgres> + Send>(
-        pool: &Pool<Postgres>,
-        id: T,
-    ) -> sqlx::Result<Option<Model>> {
+    async fn fetch_by_id<T, E>(pool: E, id: T) -> sqlx::Result<Option<Self>>
+    where
+        Self: Sized,
+        T: 'q + Encode<'q, Postgres> + Type<Postgres> + Send,
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
         let q = "SELECT * FROM wallets WHERE id = $1";
 
         sqlx::query_as(q).bind(id).fetch_optional(pool).await
     }
 
-    async fn fetch_all(pool: &Pool<Postgres>, limit: i64, offset: i64) -> sqlx::Result<Vec<Self>>
+    async fn fetch_all<E>(pool: E, limit: i64, offset: i64) -> sqlx::Result<Vec<Self>>
     where
         Self: Sized,
+        E: 'q + Executor<'q, Database = Postgres>,
     {
         let limit = limit.clamp(1, 1000);
-
         let q = "SELECT * from wallets LIMIT $1 OFFSET $2";
 
         sqlx::query_as(q)
@@ -52,30 +54,33 @@ impl<'q> ModelExt<'q> for Model {
             .await
     }
 
-    async fn total_count(pool: &Pool<Postgres>) -> sqlx::Result<usize> {
-        let q = "SELECT COUNT(*) FROM wallets;";
+    async fn total_count<E>(pool: E) -> sqlx::Result<usize>
+    where
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
+        let q = "SELECT COUNT(*) FROM wallets";
         let result: i64 = sqlx::query_scalar(q).fetch_one(pool).await?;
 
         Ok(result as usize)
     }
 }
 
-impl Model {
-    pub async fn fetch_by_address<S: AsRef<str>>(
-        pool: &Pool<Postgres>,
-        address: S,
-    ) -> sqlx::Result<Option<Self>> {
+impl<'q> Model {
+    pub async fn fetch_by_address<S, E>(pool: E, address: S) -> sqlx::Result<Option<Self>>
+    where
+        S: AsRef<str>,
+        E: 'q + Executor<'q, Database = Postgres> + Copy,
+    {
         let address = address.as_ref();
 
         let q = "SELECT * FROM wallets WHERE address = $1;";
         sqlx::query_as(q).bind(address).fetch_optional(pool).await
     }
 
-    pub async fn fetch_richest(
-        pool: &Pool<Postgres>,
-        limit: i64,
-        offset: i64,
-    ) -> sqlx::Result<Vec<Self>> {
+    pub async fn fetch_richest<E>(pool: E, limit: i64, offset: i64) -> sqlx::Result<Vec<Self>>
+    where
+        E: 'q + Executor<'q, Database = Postgres> + Copy,
+    {
         let limit = limit.clamp(1, 1000);
 
         let q = "SELECT * FROM wallets ORDER BY balance DESC LIMIT $1 OFFSET $2;";
@@ -87,10 +92,11 @@ impl Model {
     }
 
     #[tracing::instrument(skip(pool))]
-    pub async fn verify_address<S: AsRef<str> + std::fmt::Debug>(
-        pool: &Pool<Postgres>,
-        private_key: S,
-    ) -> sqlx::Result<VerifyResponse> {
+    pub async fn verify_address<S, E>(pool: E, private_key: S) -> sqlx::Result<VerifyResponse>
+    where
+        S: AsRef<str> + std::fmt::Debug,
+        E: 'q + Executor<'q, Database = Postgres> + Copy,
+    {
         let private_key = private_key.as_ref();
 
         let address = crypto::make_v2_address(private_key, "k");
@@ -118,12 +124,15 @@ impl Model {
         });
     }
 
-    pub async fn create_wallet(
-        pool: &Pool<Postgres>,
+    pub async fn create_wallet<E>(
+        pool: E,
         address: &str,
         hash: &str,
         initial_balance: Option<Decimal>,
-    ) -> sqlx::Result<Model> {
+    ) -> sqlx::Result<Model>
+    where
+        E: 'q + Executor<'q, Database = Postgres> + Copy,
+    {
         let initial_balance = initial_balance.unwrap_or(dec!(0.0));
 
         // Pretty big query, lol
@@ -137,11 +146,15 @@ impl Model {
             .await
     }
 
-    pub async fn transactions<S: AsRef<str>>(
-        pool: &Pool<Postgres>,
+    pub async fn transactions<S, E>(
+        pool: E,
         address: S,
         query: &AddressTransactionQuery,
-    ) -> sqlx::Result<Vec<transaction::Model>> {
+    ) -> sqlx::Result<Vec<transaction::Model>>
+    where
+        S: AsRef<str>,
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
         let address = address.as_ref().to_owned();
 
         let limit = query.limit.unwrap_or(50);
@@ -149,11 +162,11 @@ impl Model {
         let limit = limit.clamp(1, 1000);
 
         let q = r#"
-            SELECT * FROM transactions
-            WHERE "from" = $1 OR "to" = $1
-            ORDER BY date DESC
-            LIMIT $2 OFFSET $3;
-        "#;
+        SELECT * FROM transactions
+        WHERE "from" = $1 OR "to" = $1
+        ORDER BY date DESC
+        LIMIT $2 OFFSET $3;
+    "#;
         sqlx::query_as(q)
             .bind(address)
             .bind(limit)
@@ -162,11 +175,15 @@ impl Model {
             .await
     }
 
-    pub async fn names<S: AsRef<str>>(
-        pool: &Pool<Postgres>,
+    pub async fn names<S, E>(
+        pool: E,
         address: S,
         query: &PaginationParams,
-    ) -> sqlx::Result<Vec<name::Model>> {
+    ) -> sqlx::Result<Vec<name::Model>>
+    where
+        S: AsRef<str>,
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
         let address = address.as_ref().to_owned();
 
         let limit = query.limit.unwrap_or(50);
@@ -180,5 +197,15 @@ impl Model {
             .bind(offset)
             .fetch_all(pool)
             .await
+    }
+
+    async fn update_balance<S, E>(pool: &mut E, address: S, balance: Decimal) -> sqlx::Result<Model>
+    where
+        S: AsRef<str>,
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
+        let address = address.as_ref();
+
+        todo!()
     }
 }

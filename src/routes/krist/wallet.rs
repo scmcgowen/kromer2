@@ -19,12 +19,18 @@ async fn wallet_list(
     state: web::Data<AppState>,
     pagination: web::Query<PaginationParams>,
 ) -> Result<HttpResponse, KristError> {
+    let pool = &state.pool;
+
     let pagination = pagination.into_inner();
     let limit = pagination.limit.unwrap_or(50);
     let offset = pagination.offset.unwrap_or(0);
 
-    let count = Wallet::total_count(&state.pool).await?;
-    let wallets = Wallet::fetch_all(&state.pool, limit, offset).await?;
+    let mut tx = pool.begin().await?;
+
+    let count = Wallet::total_count(&mut *tx).await?;
+    let wallets = Wallet::fetch_all(&mut *tx, limit, offset).await?;
+
+    tx.commit().await?;
 
     let addresses: Vec<AddressJson> = wallets.into_iter().map(|wallet| wallet.into()).collect();
 
@@ -92,10 +98,10 @@ async fn wallet_get_transactions(
     let params = params.into_inner();
     let pool = &state.pool;
 
-    let tx = pool.begin().await?;
+    let mut tx = pool.begin().await?;
 
-    let total_transactions = Transaction::total_count(pool).await?;
-    let transactions = Wallet::transactions(pool, address, &params).await?;
+    let total_transactions = Transaction::total_count(&mut *tx).await?;
+    let transactions = Wallet::transactions(&mut *tx, address, &params).await?;
 
     tx.commit().await?;
 
@@ -122,10 +128,10 @@ async fn wallet_get_names(
     let query = query.into_inner();
     let pool = &state.pool;
 
-    let tx = pool.begin().await?;
+    let mut tx = pool.begin().await?;
 
-    let total_names = Name::total_count(pool).await?;
-    let names = Wallet::names(pool, address, &query).await?;
+    let total_names = Name::total_count(&mut *tx).await?;
+    let names = Wallet::names(&mut *tx, address, &query).await?;
 
     tx.commit().await?;
 

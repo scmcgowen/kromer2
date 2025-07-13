@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
-use sqlx::{Encode, Pool, Postgres, Type};
+use sqlx::{Encode, Executor, Postgres, Type};
 
 use crate::database::wallet::Model as Wallet;
 
@@ -28,20 +28,23 @@ pub struct Model {
 
 #[async_trait]
 impl<'q> ModelExt<'q> for Model {
-    async fn fetch_by_id<T: 'q + Encode<'q, Postgres> + Type<Postgres> + Send>(
-        pool: &Pool<Postgres>,
-        id: T,
-    ) -> sqlx::Result<Option<Model>> {
+    async fn fetch_by_id<T, E>(pool: E, id: T) -> sqlx::Result<Option<Self>>
+    where
+        Self: Sized,
+        T: 'q + Encode<'q, Postgres> + Type<Postgres> + Send,
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
         let q = "SELECT * FROM names WHERE id = $1";
 
         sqlx::query_as(q).bind(id).fetch_optional(pool).await
     }
 
-    async fn fetch_all(pool: &Pool<Postgres>, limit: i64, offset: i64) -> sqlx::Result<Vec<Self>>
+    async fn fetch_all<E>(pool: E, limit: i64, offset: i64) -> sqlx::Result<Vec<Self>>
     where
         Self: Sized,
+        E: 'q + Executor<'q, Database = Postgres>,
     {
-        let limit = limit.clamp(0, 1000);
+        let limit = limit.clamp(1, 1000);
         let q = "SELECT * from names LIMIT $1 OFFSET $2";
 
         sqlx::query_as(q)
@@ -51,7 +54,10 @@ impl<'q> ModelExt<'q> for Model {
             .await
     }
 
-    async fn total_count(pool: &Pool<Postgres>) -> sqlx::Result<usize> {
+    async fn total_count<E>(pool: E) -> sqlx::Result<usize>
+    where
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
         let q = "SELECT COUNT(*) FROM names";
         let result: i64 = sqlx::query_scalar(q).fetch_one(pool).await?;
 
@@ -59,22 +65,23 @@ impl<'q> ModelExt<'q> for Model {
     }
 }
 
-impl Model {
+impl<'q> Model {
     /// Get name from its name field
-    pub async fn fetch_by_name<S: AsRef<str>>(
-        pool: &Pool<Postgres>,
-        name: S,
-    ) -> sqlx::Result<Option<Model>> {
+    pub async fn fetch_by_name<S, E>(pool: E, name: S) -> sqlx::Result<Option<Model>>
+    where
+        S: AsRef<str>,
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
         let name = name.as_ref();
         let q = "SELECT * FROM name WHERE name = $1;";
 
         sqlx::query_as(q).bind(name).fetch_optional(pool).await
     }
 
-    pub async fn all_unpaid(
-        pool: &Pool<Postgres>,
-        pagination: &PaginationParams,
-    ) -> sqlx::Result<Vec<Model>> {
+    pub async fn all_unpaid<E>(pool: E, pagination: &PaginationParams) -> sqlx::Result<Vec<Model>>
+    where
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
         let limit = pagination.limit.unwrap_or(50);
         let offset = pagination.offset.unwrap_or(0);
         let limit = limit.clamp(1, 1000);
@@ -88,13 +95,19 @@ impl Model {
             .await
     }
 
-    pub async fn count_unpaid(pool: &Pool<Postgres>) -> sqlx::Result<i64> {
+    pub async fn count_unpaid<E>(pool: E) -> sqlx::Result<i64>
+    where
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
         let q = "SELECT count(*) FROM names WHERE unpaid > 0";
 
         sqlx::query_scalar(q).fetch_one(pool).await
     }
 
-    pub async fn create(pool: &Pool<Postgres>, name: String, owner: String) -> sqlx::Result<Model> {
+    pub async fn create<E>(pool: E, name: String, owner: String) -> sqlx::Result<Model>
+    where
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
         let q = "INSERT INTO names(name, owner, original_owner, time_registered) VALUES ($1, $2, $2, NOW()) RETURNING *";
 
         sqlx::query_as(q)
@@ -104,11 +117,10 @@ impl Model {
             .await
     }
 
-    pub async fn update_metadata(
-        pool: &Pool<Postgres>,
-        name: String,
-        metadata: String,
-    ) -> sqlx::Result<Model> {
+    pub async fn update_metadata<E>(pool: E, name: String, metadata: String) -> sqlx::Result<Model>
+    where
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
         let q = "UPDATE names SET metadata = $2 WHERE name = $1 RETURNING *";
 
         sqlx::query_as(q)
@@ -118,11 +130,14 @@ impl Model {
             .await
     }
 
-    pub async fn ctrl_update_metadata(
-        pool: &Pool<Postgres>,
+    pub async fn ctrl_update_metadata<E>(
+        pool: E,
         name: String,
         body: NameDataUpdateBody,
-    ) -> Result<Model, KristError> {
+    ) -> Result<Model, KristError>
+    where
+        E: 'q + Executor<'q, Database = Postgres> + Copy,
+    {
         let metadata_record = match body.a {
             Some(metadata_record) => metadata_record,
             None => {
