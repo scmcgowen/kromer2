@@ -15,6 +15,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let pool = PgPool::connect(&database_url).await?;
 
+    tracing::info!("Running database migrations...");
+    sqlx::migrate!("./migrations").run(&pool).await?;
+    tracing::info!("Database migrations completed successfully");
+
     let krist_ws_server = WebSocketServer::new();
     let state = web::Data::new(AppState { pool });
 
