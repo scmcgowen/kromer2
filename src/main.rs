@@ -2,7 +2,7 @@ use actix_web::{App, HttpServer, middleware, web};
 use sqlx::postgres::PgPool;
 use std::env;
 
-use maria_kromer::{AppState, routes, websockets::WebSocketServer};
+use kromer::{AppState, routes, websockets::WebSocketServer};
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

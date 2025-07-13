@@ -1213,6 +1213,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "kromer"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "actix-ws",
+ "async-trait",
+ "bytestring",
+ "chrono",
+ "dashmap",
+ "dotenvy",
+ "futures-util",
+ "hex",
+ "once_cell",
+ "rand 0.9.1",
+ "regex",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sqlx",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "language-tags"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1293,34 +1321,6 @@ name = "log"
 version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
-
-[[package]]
-name = "maria-kromer"
-version = "0.1.0"
-dependencies = [
- "actix-web",
- "actix-ws",
- "async-trait",
- "bytestring",
- "chrono",
- "dashmap",
- "dotenvy",
- "futures-util",
- "hex",
- "once_cell",
- "rand 0.9.1",
- "regex",
- "rust_decimal",
- "serde",
- "serde_json",
- "sha2",
- "sqlx",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
 
 [[package]]
 name = "md-5"
