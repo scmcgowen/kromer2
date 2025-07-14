@@ -14,6 +14,9 @@ pub enum TransactionError {
     #[error("Transactions disabled")]
     Disabled,
 
+    #[error("Same wallet transfer is not allowed")]
+    SameWalletTransfer,
+
     #[error("Transaction conflict for parameter {0}")]
     Conflict(String),
 }
@@ -24,6 +27,7 @@ impl KristErrorExt for TransactionError {
             TransactionError::InsufficientFunds => "insufficient_funds",
             TransactionError::NotFound => "transaction_not_found",
             TransactionError::Disabled => "transactions_disabled",
+            TransactionError::SameWalletTransfer => "same_wallet_transfer",
             TransactionError::Conflict(_) => "transaction_conflict",
         }
     }
@@ -35,6 +39,7 @@ impl error::ResponseError for TransactionError {
             TransactionError::InsufficientFunds => StatusCode::FORBIDDEN,
             TransactionError::NotFound => StatusCode::NOT_FOUND,
             TransactionError::Disabled => StatusCode::LOCKED,
+            TransactionError::SameWalletTransfer => StatusCode::BAD_REQUEST,
             TransactionError::Conflict(_) => StatusCode::CONFLICT,
         }
     }
