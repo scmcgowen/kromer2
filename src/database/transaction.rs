@@ -9,7 +9,7 @@ use sqlx::{Encode, Executor, Pool, Postgres, Type};
 use crate::{database::ModelExt, routes::PaginationParams};
 
 use crate::database::wallet::Model as Wallet;
-use crate::errors::wallet::WalletError;
+use crate::errors::{KromerError, wallet::WalletError};
 
 static KST_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?:([a-z0-9-_]{1,32})@)?([a-z0-9]{1,64})\.kst").unwrap());
