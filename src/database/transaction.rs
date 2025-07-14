@@ -142,24 +142,30 @@ impl Model {
     ) -> sqlx::Result<Model> {
         let metadata = creation_data.metadata.unwrap_or_default();
 
+        let mut tx = pool.begin().await?;
+
         let q = r#"INSERT INTO transactions(amount, "from", "to", metadata, transaction_type, date) VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING *"#;
 
-        let _ = Wallet::update_balance(pool, &creation_data.from, -creation_data.amount)
-            .await
-            .map_err(|_| KromerError::Wallet(WalletError::NotFound));
-        
-        let _ = Wallet::update_balance(pool, &creation_data.to, creation_data.amount)
+        // TODO: Factor this out to the db, thank god its a transaction now.
+        let _ = Wallet::update_balance(&mut *tx, &creation_data.from, -creation_data.amount)
             .await
             .map_err(|_| KromerError::Wallet(WalletError::NotFound));
 
-        sqlx::query_as(q)
+        let _ = Wallet::update_balance(&mut *tx, &creation_data.to, creation_data.amount)
+            .await
+            .map_err(|_| KromerError::Wallet(WalletError::NotFound));
+
+        let model = sqlx::query_as(q)
             .bind(creation_data.amount)
             .bind(&creation_data.from)
             .bind(&creation_data.to)
             .bind(metadata)
             .bind(creation_data.transaction_type)
-            .fetch_one(pool)
-            .await
+            .fetch_one(&mut *tx)
+            .await?;
+        tx.commit().await?; // I'm not sure this is how it should be done? `Wallet::update_balance` also creates a transaction..
+
+        Ok(model)
     }
 }
 

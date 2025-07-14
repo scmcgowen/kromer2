@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use rust_decimal::{Decimal, dec};
-use sqlx::{Encode, Executor, Pool, Postgres, Type};
+use sqlx::{Acquire, Encode, Executor, Pool, Postgres, Type};
 
 use crate::database::{ModelExt, name, transaction};
 use crate::errors::KromerError;
@@ -230,21 +230,30 @@ impl<'q> Model {
             .map_err(KromerError::Database)
     }
 
-    pub async fn update_balance<S>(
-        executor: &Pool<Postgres>,
+    #[tracing::instrument(skip(conn))]
+    pub async fn update_balance<S, A>(
+        conn: A,
         address: S,
         balance: Decimal,
     ) -> Result<Model, KromerError>
     where
-        S: AsRef<str>,
+        S: AsRef<str> + std::fmt::Debug,
+        A: Acquire<'q, Database = Postgres>,
     {
+        let mut tx = conn.begin().await?;
         let address = address.as_ref();
 
         // Just make sure that wallet exists
         // TODO: Make a generic function on ModelExt trait that returns whether or not something exists.
-        let _wallet = Self::fetch_by_address(executor, address)
-            .await?
-            .ok_or_else(|| KromerError::Wallet(WalletError::NotFound))?;
+        let wallet_exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM wallets WHERE address = $1)")
+                .bind(address)
+                .fetch_one(&mut *tx)
+                .await?;
+        if !wallet_exists {
+            tracing::debug!("");
+            return Err(KromerError::Wallet(WalletError::NotFound));
+        }
 
         let q = r#"
         UPDATE wallets
@@ -256,11 +265,14 @@ impl<'q> Model {
         RETURNING *;
         "#;
 
-        sqlx::query_as(q)
+        let model = sqlx::query_as(q)
             .bind(balance)
             .bind(address)
-            .fetch_one(executor)
+            .fetch_one(&mut *tx)
             .await
-            .map_err(KromerError::Database)
+            .map_err(KromerError::Database)?;
+        tx.commit().await?;
+
+        Ok(model)
     }
 }
