@@ -141,6 +141,14 @@ impl Model {
 
         let q = r#"INSERT INTO transactions(amount, "from", "to", metadata, transaction_type, date) VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING *"#;
 
+        let updated_from_wallet = Wallet::update_balance(pool, creation_data.from, -creation_data.amount)
+            .await
+            .map_err(|_| KromerError::Wallet(WalletError::NotFound))?;
+        
+        let updated_wallet_to = Wallet::update_balance(pool, creation_data.to, creation_data.amount)
+            .await
+            .map_err(|_| KromerError::Wallet(WalletError::NotFound))?;
+
         sqlx::query_as(q)
             .bind(creation_data.amount)
             .bind(creation_data.from)
