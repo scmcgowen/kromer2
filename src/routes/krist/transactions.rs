@@ -74,7 +74,7 @@ async fn transaction_create(
         return Err(KristError::Transaction(TransactionError::InsufficientFunds));
     }
     
-    if sender.balance == recipient.balance {
+    if sender.address == recipient.address {
         return Err(KristError::Transaction(TransactionError::SameWalletTransfer));
     }
     
