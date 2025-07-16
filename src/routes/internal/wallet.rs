@@ -80,7 +80,7 @@ async fn wallet_give_money(
         .map_err(|_| KromerError::Wallet(WalletError::NotFound))?;
 
     let creation_data = TransactionCreateData {
-        from: String::from("server"),
+        from: "serverwelf".into(),
         to: data.address,
         amount: amount,
         metadata: None,
