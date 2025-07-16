@@ -52,11 +52,12 @@ async fn transaction_create(
     server: web::Data<WebSocketServer>,
     details: web::Json<TransactionDetails>,
 ) -> Result<HttpResponse, KristError> {
-    let details = details.into_inner();
     let pool = &state.pool;
+    let details = details.into_inner();
+    let amount = details.amount.round_dp(2); // Do not allow more than 2 decimals after the dot.
 
     // Check on the server so DB doesnt throw.
-    if details.amount <= dec!(0.0) {
+    if amount <= dec!(0.00) {
         return Err(KristError::Generic(GenericError::InvalidParameter(
             "amount".to_string(),
         )));
@@ -70,18 +71,20 @@ async fn transaction_create(
         .ok_or_else(|| KristError::Address(AddressError::NotFound(details.to)))?;
 
     // Make sure to check the request to see if the funds are available.
-    if sender.balance < details.amount {
+    if sender.balance < amount {
         return Err(KristError::Transaction(TransactionError::InsufficientFunds));
     }
 
     if sender.address == recipient.address {
-        return Err(KristError::Transaction(TransactionError::SameWalletTransfer));
+        return Err(KristError::Transaction(
+            TransactionError::SameWalletTransfer,
+        ));
     }
 
     let creation_data = TransactionCreateData {
         from: sender.address,
         to: recipient.address,
-        amount: details.amount,
+        amount,
         metadata: details.metadata,
         transaction_type: TransactionType::Transfer,
     };
