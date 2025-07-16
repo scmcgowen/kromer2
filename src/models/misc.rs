@@ -11,7 +11,7 @@ pub struct WalletVersionResponse {
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct MoneySupplyResponse {
     pub ok: bool,
-    pub supply: Decimal,
+    pub money_supply: Decimal,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]

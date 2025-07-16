@@ -102,11 +102,14 @@ async fn get_v2_address(query: web::Json<LoginDetails>) -> Result<HttpResponse, 
 async fn get_kromer_supply(state: web::Data<AppState>) -> Result<HttpResponse, KristError> {
     let pool = &state.pool;
 
-    let supply: Decimal = sqlx::query_scalar("SELECT SUM(balance) FROM wallets")
+    let money_supply: Decimal = sqlx::query_scalar("SELECT SUM(balance) FROM wallets")
         .fetch_one(pool)
         .await?;
 
-    Ok(HttpResponse::Ok().json(MoneySupplyResponse { ok: true, supply }))
+    Ok(HttpResponse::Ok().json(MoneySupplyResponse {
+        ok: true,
+        money_supply,
+    }))
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
