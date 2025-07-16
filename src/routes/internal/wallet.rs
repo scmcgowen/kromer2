@@ -5,6 +5,7 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::database::player::Model as Player;
+use crate::database::transaction::{Model as Transaction, TransactionCreateData, TransactionType};
 use crate::database::wallet::Model as Wallet;
 
 use crate::database::ModelExt;
@@ -68,14 +69,28 @@ async fn wallet_give_money(
 ) -> Result<HttpResponse, KromerError> {
     let pool = &state.pool;
     let data = data.into_inner();
+    let amount = data.amount.round_dp(2);
 
-    if data.amount < dec!(0.0) {
+    if amount < dec!(0.00) {
         return Err(KromerError::Transaction(TransactionError::InvalidAmount));
     }
 
-    let updated_wallet = Wallet::update_balance(pool, data.address, data.amount)
+    let updated_wallet = Wallet::update_balance(pool, &data.address, amount)
         .await
         .map_err(|_| KromerError::Wallet(WalletError::NotFound))?;
+
+    let creation_data = TransactionCreateData {
+        from: String::from("server"),
+        to: data.address,
+        amount: amount,
+        metadata: None,
+        transaction_type: TransactionType::Mined,
+    };
+    let transaction = Transaction::create(pool, creation_data).await?; // bitches.
+    tracing::info!(
+        "Created a transaction for welfare with ID {}",
+        transaction.id
+    );
 
     Ok(HttpResponse::Ok().json(json!({
         "wallet": updated_wallet
