@@ -136,6 +136,29 @@ impl Model {
             .await
     }
 
+    pub async fn create_no_update(
+        pool: &Pool<Postgres>,
+        creation_data: TransactionCreateData,
+    ) -> sqlx::Result<Model> {
+        let metadata = creation_data.metadata.unwrap_or_default();
+
+        let mut tx = pool.begin().await?;
+
+        let q = r#"INSERT INTO transactions(amount, "from", "to", metadata, transaction_type, date) VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING *"#;
+
+        let model = sqlx::query_as(q)
+            .bind(creation_data.amount)
+            .bind(&creation_data.from)
+            .bind(&creation_data.to)
+            .bind(metadata)
+            .bind(creation_data.transaction_type)
+            .fetch_one(&mut *tx)
+            .await?;
+        tx.commit().await?;
+
+        Ok(model)
+    }
+
     pub async fn create(
         pool: &Pool<Postgres>,
         creation_data: TransactionCreateData,
