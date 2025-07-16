@@ -1,4 +1,5 @@
 use actix_web::{HttpResponse, get, post, web};
+use rust_decimal::Decimal;
 
 use crate::{
     AppState,
@@ -6,7 +7,7 @@ use crate::{
     errors::krist::KristError,
     models::{
         auth::{AddressAuthenticationResponse, LoginDetails},
-        misc::{PrivateKeyAddressResponse, WalletVersionResponse},
+        misc::{MoneySupplyResponse, PrivateKeyAddressResponse, WalletVersionResponse},
         motd::{Constants, CurrencyInfo, DetailedMotd, DetailedMotdResponse, PackageInfo},
     },
     utils::crypto,
@@ -97,12 +98,23 @@ async fn get_v2_address(query: web::Json<LoginDetails>) -> Result<HttpResponse, 
     Ok(HttpResponse::Ok().json(response))
 }
 
+#[get("/supply")]
+async fn get_kromer_supply(state: web::Data<AppState>) -> Result<HttpResponse, KristError> {
+    let pool = &state.pool;
+
+    let supply: Decimal = sqlx::query_scalar("SELECT SUM(balance) FROM wallets")
+        .fetch_one(pool)
+        .await?;
+
+    Ok(HttpResponse::Ok().json(MoneySupplyResponse { ok: true, supply }))
+}
+
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("")
             .service(login_address)
             .service(get_motd)
-            // .service(get_kromer_supply)
+            .service(get_kromer_supply)
             .service(get_v2_address),
     );
 }
