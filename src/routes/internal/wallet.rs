@@ -42,20 +42,20 @@ async fn wallet_create(
     let pool = &state.pool;
     let user = user.into_inner();
 
-    let password = generate_random_password();
+    let private_key = generate_random_password();
 
     // TODO: Figure out how to use a transaction for this. Previous attempts were a pain in the ass. I do not want to touch this. ~sov
 
     // I really dont like how this is done, oh well lol.
     let _player_model = Player::create(pool, user.uuid, user.name).await?;
-    let wallet_verification_response = Wallet::verify_address(pool, &password).await?;
+    let wallet_verification_response = Wallet::verify_address(pool, &private_key).await?;
 
     let wallet = wallet_verification_response.model;
     let updated_wallet = Wallet::set_balance(pool, wallet.address, dec!(100)).await?;
     let _updated_player = Player::add_wallet_to_owned(pool, user.uuid, &updated_wallet).await?;
 
     let resp = AddressCreationResponse {
-        password,
+        private_key,
         address: updated_wallet.address,
     };
 

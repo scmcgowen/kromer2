@@ -20,7 +20,8 @@ pub struct AddressResponse {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct AddressCreationResponse {
-    pub password: String,
+    #[serde(rename = "privatekey")] // Dima you ask too much of me
+    pub private_key: String,
     pub address: String,
 }
 
