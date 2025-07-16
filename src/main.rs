@@ -1,3 +1,4 @@
+use actix_cors::Cors;
 use actix_web::{App, HttpServer, middleware, web};
 use sqlx::postgres::PgPool;
 use std::env;
@@ -23,11 +24,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = web::Data::new(AppState { pool });
 
     let http_server = HttpServer::new(move || {
+        let cors = Cors::permissive(); // TODO: NOT USE PERMISSIVE, LOL
+
         App::new()
             .app_data(state.clone())
             .app_data(web::Data::new(krist_ws_server.clone()))
             .wrap(middleware::Logger::default())
             .wrap(middleware::NormalizePath::trim())
+            .wrap(cors)
             .configure(routes::config)
         // .default_service(web::route().to(routes::not_found::not_found))
     })
