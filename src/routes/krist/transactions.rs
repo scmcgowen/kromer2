@@ -56,7 +56,7 @@ async fn transaction_create(
     let pool = &state.pool;
 
     // Check on the server so DB doesnt throw.
-    if details.amount < dec!(0.0) {
+    if details.amount <= dec!(0.0) {
         return Err(KristError::Generic(GenericError::InvalidParameter(
             "amount".to_string(),
         )));
@@ -73,11 +73,11 @@ async fn transaction_create(
     if sender.balance < details.amount {
         return Err(KristError::Transaction(TransactionError::InsufficientFunds));
     }
-    
+
     if sender.address == recipient.address {
         return Err(KristError::Transaction(TransactionError::SameWalletTransfer));
     }
-    
+
     let creation_data = TransactionCreateData {
         from: sender.address,
         to: recipient.address,
