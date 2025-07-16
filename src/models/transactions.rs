@@ -23,7 +23,8 @@ pub struct TransactionListResponse {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct TransactionDetails {
-    pub password: String,
+    #[serde(rename = "privatekey")]
+    pub private_key: String,
     pub to: String,
     pub amount: Decimal,
     #[serde(skip_serializing_if = "Option::is_none")]

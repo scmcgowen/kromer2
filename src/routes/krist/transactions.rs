@@ -63,7 +63,7 @@ async fn transaction_create(
         )));
     }
 
-    let sender_verify_response = Wallet::verify_address(pool, details.password).await?;
+    let sender_verify_response = Wallet::verify_address(pool, details.private_key).await?;
     let sender = sender_verify_response.model;
 
     let recipient = Wallet::fetch_by_address(pool, &details.to)
