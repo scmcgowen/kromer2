@@ -4,10 +4,17 @@ mod transactions;
 mod wallet;
 mod ws;
 
-use actix_web::web;
+use actix_web::{HttpResponse, get, web};
+
+#[get("")]
+pub async fn index_get() -> HttpResponse {
+    HttpResponse::Ok().body("Hello! This is the Krist compatible API provided by Kromer, some functionality might be slightly different but most software made for krist should work")
+}
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     // cfg.service(web::scope("/lookup").configure(lookup::config));
+
+    cfg.service(index_get);
 
     cfg.configure(wallet::config);
     cfg.configure(transactions::config);
