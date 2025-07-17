@@ -260,7 +260,7 @@ impl<'q> Model {
         SET
             balance = balance + $1,
             total_in = total_in + CASE WHEN $1 > 0 THEN $1 ELSE 0 END,
-            total_out = total_out + CASE WHEN $1 < 0 THEN $1 ELSE 0 END
+            total_out = abs(total_out) + CASE WHEN $1 < 0 THEN abs($1) ELSE 0 END
         WHERE address = $2
         RETURNING *;
         "#;
