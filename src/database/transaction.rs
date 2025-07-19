@@ -212,7 +212,7 @@ impl TransactionNameData {
     /// ```
     /// use kromer::database::transaction::TransactionNameData;
     /// let data = TransactionNameData::parse("meta@name.kro");
-    /// assert_eq!(data.meta, Some("meta".to_string()));
+    /// assert_eq!(data.metaname, Some("meta".to_string()));
     /// assert_eq!(data.name, Some("name".to_string()));
     ///
     /// let empty = TransactionNameData::parse("");
@@ -243,7 +243,7 @@ impl TransactionNameData {
     /// ```
     /// use kromer::database::transaction::TransactionNameData;
     /// let data = TransactionNameData::parse_opt(Some("meta@name.kro"));
-    /// assert_eq!(data.meta, Some("meta".to_string()));
+    /// assert_eq!(data.metaname, Some("meta".to_string()));
     /// assert_eq!(data.name, Some("name".to_string()));
     ///
     /// let empty = TransactionNameData::parse_opt(None::<String>);
@@ -267,7 +267,7 @@ impl TransactionNameData {
     /// use kromer::database::transaction::TransactionNameData;
     /// let input = Some("meta@name.kro".to_string());
     /// let data = TransactionNameData::parse_opt_ref(&input);
-    /// assert_eq!(data.meta, Some("meta".to_string()));
+    /// assert_eq!(data.metaname, Some("meta".to_string()));
     /// assert_eq!(data.name, Some("name".to_string()));
     ///
     /// let empty = TransactionNameData::parse_opt_ref(&None::<String>);
