@@ -42,8 +42,8 @@ impl Default for WebSocketServer {
 impl WebSocketServer {
     pub fn new() -> Self {
         let inner = WebSocketServerInner {
-            sessions: DashMap::new(),
-            pending_tokens: DashMap::new(),
+            sessions: DashMap::with_capacity(5),
+            pending_tokens: DashMap::with_capacity(5),
         };
 
         Self {
