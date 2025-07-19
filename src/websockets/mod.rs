@@ -222,4 +222,18 @@ impl WebSocketServer {
 
         while let Some(_result) = futures.next().await {}
     }
+
+    pub async fn fetch_session_data(&self, uuid: &Uuid) -> Option<WebSocketSessionData> {
+        let inner = self.inner.lock().await;
+        let entry = inner.sessions.get(uuid);
+
+        if let Some(session) = entry {
+            let session_data = session.value();
+            let cloned_data = session_data.clone(); // Fucking borrow checker man.
+
+            Some(cloned_data)
+        } else {
+            None
+        }
+    }
 }

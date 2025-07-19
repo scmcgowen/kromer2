@@ -68,6 +68,28 @@ pub async fn process_text_msg(
             amount,
             metadata,
         } => {
+            let private_key = match private_key {
+                Some(key) => key,
+                None => {
+                    let session_data = server.fetch_session_data(uuid).await;
+
+                    if let Some(session_data) = session_data
+                        && let Some(private_key) = session_data.private_key
+                    {
+                        private_key
+                    } else {
+                        return Ok(WebSocketMessage {
+                            ok: Some(false),
+                            id: msg_id,
+                            r#type: WebSocketMessageInner::Error {
+                                error: "unauthorized".into(),
+                                message: "You are not logged in.".into(),
+                            },
+                        });
+                    }
+                }
+            };
+
             routes::transactions::make_transaction(
                 pool,
                 private_key,

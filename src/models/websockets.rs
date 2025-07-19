@@ -40,7 +40,7 @@ pub enum WebSocketMessageInner {
     MakeTransaction {
         /// The privatekey of your address.
         #[serde(rename = "privatekey")]
-        private_key: String,
+        private_key: Option<String>, // Ugh, fucking krist..
 
         /// The recipient of the transaction.
         to: String,
