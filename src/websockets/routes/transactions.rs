@@ -1,6 +1,5 @@
 use rust_decimal::{Decimal, dec};
 use sqlx::{Pool, Postgres};
-use uuid::Uuid;
 
 use crate::{
     database::transaction::{TransactionCreateData, TransactionType},

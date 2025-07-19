@@ -12,7 +12,6 @@ use crate::errors::krist::address::AddressError;
 use crate::errors::krist::generic::GenericError;
 use crate::errors::krist::name::NameError;
 use crate::errors::krist::transaction::TransactionError;
-use crate::errors::name;
 use crate::models::transactions::{
     TransactionDetails, TransactionJson, TransactionListResponse, TransactionResponse,
 };
