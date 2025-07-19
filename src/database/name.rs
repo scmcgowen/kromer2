@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
-use sqlx::{Encode, Executor, Pool, Postgres, Type};
+use sqlx::{Acquire, Encode, Executor, Pool, Postgres, Type};
 
 use crate::database::wallet::Model as Wallet;
 
@@ -177,5 +177,19 @@ impl<'q> Model {
         let updated_model = Self::update_metadata(pool, name, metadata_record).await?;
 
         Ok(updated_model)
+    }
+
+    /// Fetches the owner of the wallet and returns its database model.
+    pub async fn owner<A>(&self, conn: A) -> sqlx::Result<Option<Wallet>>
+    where
+        A: Acquire<'q, Database = Postgres>,
+    {
+        let mut tx = conn.begin().await?;
+
+        let owner = Wallet::fetch_by_address(&mut *tx, &self.owner).await?;
+
+        tx.commit().await?;
+
+        Ok(owner)
     }
 }

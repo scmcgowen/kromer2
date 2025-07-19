@@ -9,7 +9,7 @@ pub static NAME_FETCH_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?:xn--)?[a-z0-9-_]{1,64}$").unwrap());
 pub static NAME_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-z0-9_-]{1,64}$").unwrap());
 pub static NAME_A_RECORD_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[^\s.?#].[^\s]*$").unwrap());
-pub static _NAME_META_RE: Lazy<Regex> =
+pub static NAME_META_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?:([a-z0-9-_]{1,32})@)?([a-z0-9]{1,64})\.kro$").unwrap());
 
 #[inline(always)]

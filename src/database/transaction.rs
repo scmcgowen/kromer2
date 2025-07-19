@@ -55,8 +55,8 @@ pub struct TransactionCreateData {
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, serde::Serialize, serde::Deserialize)]
 pub struct TransactionNameData {
-    pub meta: Option<String>,
     pub name: Option<String>,
+    pub metaname: Option<String>,
 }
 
 impl From<String> for TransactionType {
@@ -226,10 +226,10 @@ impl TransactionNameData {
 
         match KRO_REGEX.captures(input) {
             Some(captures) => {
-                let meta = captures.get(1).map(|m| m.as_str().to_string()); // TODO: Less allocating, should maybe use `&str` on the transaction models
+                let metaname = captures.get(1).map(|m| m.as_str().to_string()); // TODO: Less allocating, should maybe use `&str` on the transaction models
                 let name = captures.get(2).map(|m| m.as_str().to_string());
 
-                Self { meta, name }
+                Self { metaname, name }
             }
             None => Self::default(),
         }
@@ -280,5 +280,21 @@ impl TransactionNameData {
 
         let input = input.as_ref().unwrap(); // We can do this, we made sure it exists.
         Self::parse(input)
+    }
+
+    /// Return the name as a string slice.
+    #[inline(always)]
+    pub fn name(&self) -> Option<&str> {
+        let name_ref = self.name.as_ref();
+
+        name_ref.map(|name| name.as_str())
+    }
+
+    /// Return the metaname as a string slice
+    #[inline(always)]
+    pub fn metaname(&self) -> Option<&str> {
+        let metaname_ref = self.metaname.as_ref();
+
+        metaname_ref.map(|metaname| metaname.as_str())
     }
 }

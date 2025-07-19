@@ -12,11 +12,12 @@ use crate::errors::krist::address::AddressError;
 use crate::errors::krist::generic::GenericError;
 use crate::errors::krist::name::NameError;
 use crate::errors::krist::transaction::TransactionError;
+use crate::errors::name;
 use crate::models::transactions::{
     TransactionDetails, TransactionJson, TransactionListResponse, TransactionResponse,
 };
 use crate::models::websockets::{WebSocketEvent, WebSocketMessage};
-use crate::utils::validation::_NAME_META_RE;
+use crate::utils::validation::NAME_META_RE;
 
 use crate::websockets::WebSocketServer;
 use crate::{AppState, errors::krist::KristError, routes::PaginationParams};
@@ -62,6 +63,14 @@ async fn transaction_create(
     let details = details.into_inner();
     let amount = details.amount.round_dp(2); // Do not allow more than 2 decimals after the dot.
 
+    // Check if the `to` field is not empty and must be below or equal to 64.
+    // The length check is for making sure there is enough space for metaname too.
+    if details.to.is_empty() && details.to.len() <= 64 {
+        return Err(KristError::Generic(GenericError::InvalidParameter(
+            "to".to_string(),
+        )));
+    }
+
     // Check on the server so DB doesnt throw.
     if amount <= dec!(0.00) {
         return Err(KristError::Generic(GenericError::InvalidParameter(
@@ -69,33 +78,38 @@ async fn transaction_create(
         )));
     }
 
-    let sender_verify_response = Wallet::verify_address(pool, details.private_key).await?;
-    let sender = sender_verify_response.model;
-
-    let recipient: Wallet;
-    let mut is_name: Option<TransactionNameData> = None;
-
-    if _NAME_META_RE.is_match(&details.to) && !details.to.is_empty() && details.to.len() <= 64 {
-        is_name = Some(TransactionNameData::parse(details.to.clone()));
-
-        let name = Name::fetch_by_name(pool, is_name.clone().unwrap().name.unwrap())
-            .await?
-            .ok_or_else(|| KristError::Name(NameError::NameNotFound(details.to.clone())))?;
-
-        recipient = Wallet::fetch_by_address(pool, name.owner)
-            .await?
-            .ok_or_else(|| KristError::Address(AddressError::NotFound(details.to.clone())))?;
-        // I'm pretty sure it is impossible for this to error lmao
-    } else {
-        recipient = Wallet::fetch_by_address(pool, &details.to)
-            .await?
-            .ok_or_else(|| KristError::Address(AddressError::NotFound(details.to.clone())))?;
-    }
-
     // Make sure to check the request to see if the funds are available.
     if sender.balance < amount {
         return Err(KristError::Transaction(TransactionError::InsufficientFunds));
     }
+
+    let sender_verify_response = Wallet::verify_address(pool, details.private_key).await?;
+    let sender = sender_verify_response.model;
+
+    let is_name = NAME_META_RE.is_match(&details.to);
+
+    let name_data = is_name.then(|| TransactionNameData::parse(&details.to));
+    let (sent_metaname, sent_name) = match name_data {
+        Some(name_data) => (name_data.metaname, name_data.name),
+        None => (None, None),
+    };
+
+    let recipient = match is_name {
+        true => {
+            // Cursed but makes borrow checker happy, lol.
+            let name = sent_name.as_ref().map(|a| a.as_str()).unwrap_or_default();
+
+            let name = Name::fetch_by_name(pool, name)
+                .await?
+                .ok_or_else(|| KristError::Name(NameError::NameNotFound(details.to.clone())))?;
+
+            let owner = name.owner(pool).await?;
+            owner.ok_or_else(|| KristError::Name(NameError::NameNotFound(details.to.clone())))?
+        }
+        false => Wallet::fetch_by_address(pool, &details.to)
+            .await?
+            .ok_or_else(|| KristError::Address(AddressError::NotFound(details.to.clone())))?,
+    };
 
     if sender.address == recipient.address {
         return Err(KristError::Transaction(
@@ -103,21 +117,16 @@ async fn transaction_create(
         ));
     }
 
-    let mut creation_data = TransactionCreateData {
+    let creation_data = TransactionCreateData {
         from: sender.address,
         to: recipient.address,
         amount,
         name: None,
-        sent_metaname: None,
-        sent_name: None,
+        sent_metaname,
+        sent_name,
         metadata: details.metadata,
         transaction_type: TransactionType::Transfer,
     };
-
-    if is_name.is_some() {
-        creation_data.sent_metaname = is_name.clone().unwrap().meta;
-        creation_data.sent_name = is_name.clone().unwrap().name;
-    }
 
     let transaction = Transaction::create(pool, creation_data).await?;
     let transaction_json: TransactionJson = transaction.into();
