@@ -2,7 +2,9 @@ use actix_web::{HttpResponse, get, post, web};
 use rust_decimal::dec;
 
 use crate::database::ModelExt;
-use crate::database::transaction::{Model as Transaction, TransactionCreateData, TransactionType};
+use crate::database::transaction::{
+    Model as Transaction, TransactionCreateData, TransactionNameData, TransactionType,
+};
 use crate::database::wallet::Model as Wallet;
 
 use crate::database::name::Model as Name;
@@ -71,17 +73,12 @@ async fn transaction_create(
     let sender = sender_verify_response.model;
 
     let recipient: Wallet;
-    let mut is_name = false;
+    let mut is_name: Option<TransactionNameData> = None;
 
     if _NAME_META_RE.is_match(&details.to) && !details.to.is_empty() && details.to.len() <= 64 {
-        let only_name = _NAME_META_RE
-            .captures(&details.to)
-            .expect("capture failed")
-            .get(2)
-            .expect("capture failed (2)")
-            .as_str();
+        is_name = Some(TransactionNameData::parse(details.to.clone()));
 
-        let name = Name::fetch_by_name(pool, only_name)
+        let name = Name::fetch_by_name(pool, is_name.clone().unwrap().name.unwrap())
             .await?
             .ok_or_else(|| KristError::Name(NameError::NameNotFound(details.to.clone())))?;
 
@@ -89,8 +86,6 @@ async fn transaction_create(
             .await?
             .ok_or_else(|| KristError::Address(AddressError::NotFound(details.to.clone())))?;
         // I'm pretty sure it is impossible for this to error lmao
-
-        is_name = true;
     } else {
         recipient = Wallet::fetch_by_address(pool, &details.to)
             .await?
@@ -119,15 +114,9 @@ async fn transaction_create(
         transaction_type: TransactionType::Transfer,
     };
 
-    if is_name {
-        if let Some(caps) = _NAME_META_RE.captures(&details.to) {
-            if let Some(metaname) = caps.get(1) {
-                creation_data.sent_metaname = Some(metaname.as_str().to_string());
-            }
-            if let Some(sent_name) = caps.get(2) {
-                creation_data.sent_name = Some(sent_name.as_str().to_string());
-            }
-        }
+    if is_name.is_some() {
+        creation_data.sent_metaname = is_name.clone().unwrap().meta;
+        creation_data.sent_name = is_name.clone().unwrap().name;
     }
 
     let transaction = Transaction::create(pool, creation_data).await?;
