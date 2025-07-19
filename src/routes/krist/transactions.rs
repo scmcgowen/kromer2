@@ -78,11 +78,6 @@ async fn transaction_create(
         )));
     }
 
-    // Make sure to check the request to see if the funds are available.
-    if sender.balance < amount {
-        return Err(KristError::Transaction(TransactionError::InsufficientFunds));
-    }
-
     let sender_verify_response = Wallet::verify_address(pool, details.private_key).await?;
     let sender = sender_verify_response.model;
 
@@ -110,6 +105,11 @@ async fn transaction_create(
             .await?
             .ok_or_else(|| KristError::Address(AddressError::NotFound(details.to.clone())))?,
     };
+
+    // Make sure to check the request to see if the funds are available.
+    if sender.balance < amount {
+        return Err(KristError::Transaction(TransactionError::InsufficientFunds));
+    }
 
     if sender.address == recipient.address {
         return Err(KristError::Transaction(
