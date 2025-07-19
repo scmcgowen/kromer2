@@ -1,10 +1,14 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
+use rust_decimal::{Decimal, dec};
 use sqlx::{Acquire, Encode, Executor, Pool, Postgres, Type};
 
+use crate::database::transaction::Model as Transaction;
+use crate::database::transaction::{TransactionCreateData, TransactionType};
 use crate::database::wallet::Model as Wallet;
 
+use crate::models::websockets::{WebSocketEvent, WebSocketMessage};
+use crate::websockets::WebSocketServer;
 use crate::{
     database::ModelExt,
     errors::krist::{KristError, address::AddressError, generic::GenericError, name::NameError},
@@ -191,5 +195,46 @@ impl<'q> Model {
         tx.commit().await?;
 
         Ok(owner)
+    }
+
+    /// Transfer ownership to a new wallet
+    pub async fn transfer_ownership<A>(
+        self,
+        conn: A,
+        server: &WebSocketServer,
+        new_owner_address: String,
+    ) -> sqlx::Result<Model>
+    where
+        A: Acquire<'q, Database = Postgres>,
+    {
+        let mut tx = conn.begin().await?;
+        let q = "UPDATE names SET owner = $2, last_updated = NOW(), last_transfered = NOW() WHERE owner = $1 RETURNING *";
+
+        let updated_name: Model = sqlx::query_as(q)
+            .bind(&self.owner)
+            .bind(&new_owner_address)
+            .fetch_one(&mut *tx)
+            .await?;
+
+        let creation_data = TransactionCreateData {
+            from: self.owner,
+            to: new_owner_address,
+            amount: dec!(0),
+            metadata: None,
+            name: Some(self.name),
+            sent_metaname: None,
+            sent_name: None,
+            transaction_type: TransactionType::NameTransfer,
+        };
+
+        let transaction = Transaction::create(&mut *tx, creation_data).await?;
+        let event = WebSocketMessage::new_event(WebSocketEvent::Transaction {
+            transaction: transaction.into(),
+        });
+        server.broadcast_event(event).await;
+
+        tx.commit().await?;
+
+        Ok(updated_name)
     }
 }

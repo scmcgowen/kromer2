@@ -13,10 +13,10 @@ use crate::errors::krist::transaction::TransactionError;
 use crate::models::motd::MINING_CONSTANTS;
 use crate::models::names::{
     NameAvailablityResponse, NameBonusResponse, NameCostResponse, NameDataUpdateBody, NameJson,
-    NameListResponse, NameResponse, RegisterNameRequest,
+    NameListResponse, NameResponse, RegisterNameRequest, TransferNameRequest,
 };
 use crate::models::websockets::{WebSocketEvent, WebSocketMessage};
-use crate::utils::validation::is_valid_name;
+use crate::utils::validation;
 use crate::websockets::WebSocketServer;
 use crate::{AppState, errors::krist::KristError, routes::PaginationParams};
 
@@ -67,7 +67,7 @@ async fn name_check(
     let name = name.into_inner();
     let pool = &state.pool;
 
-    if !is_valid_name(&name, true) {
+    if !validation::is_valid_name(&name, true) {
         return Err(KristError::Generic(GenericError::InvalidParameter(
             "name".to_string(),
         )));
@@ -166,10 +166,8 @@ async fn name_register(
             "privatekey".to_string(),
         )));
     }
-    // if desired_name.is_none() {
-    //     return Err(KristError::Generic(GenericError::MissingParameter("desiredName".to_string())))
-    // }
-    if !is_valid_name(&name, false) {
+
+    if !validation::is_valid_name(&name, false) {
         return Err(KristError::Generic(GenericError::InvalidParameter(
             "name".to_string(),
         )));
@@ -247,6 +245,56 @@ async fn name_update_data(
     Ok(HttpResponse::Ok().json(resp))
 }
 
+#[post("/{name}/transfer")]
+async fn name_transfer(
+    state: web::Data<AppState>,
+    websocket_server: web::Data<WebSocketServer>,
+    name: web::Path<String>,
+    details: web::Json<TransferNameRequest>,
+) -> Result<HttpResponse, KristError> {
+    let pool = &state.pool;
+    let server = websocket_server.into_inner();
+    let details = details.into_inner();
+    let name = name.into_inner();
+
+    if !validation::is_valid_name(&name, false) {
+        return Err(KristError::Generic(GenericError::InvalidParameter(
+            "name".to_owned(),
+        )));
+    }
+
+    let name = name.trim().to_lowercase();
+
+    let current_owner_response = Wallet::verify_address(pool, details.private_key).await?;
+    if !current_owner_response.authed {
+        return Err(KristError::Address(AddressError::AuthFailed));
+    }
+
+    let name = Name::fetch_by_name(pool, &name)
+        .await?
+        .ok_or_else(|| KristError::Name(NameError::NameNotFound(name)))?;
+    if name.owner == details.address {
+        tracing::debug!("Disallowed bumping name, returning original data");
+        let response = NameResponse {
+            ok: true,
+            name: name.into(),
+        };
+
+        return Ok(HttpResponse::Ok().json(response));
+    }
+
+    let updated_name = name
+        .transfer_ownership(pool, &server, details.address)
+        .await?;
+
+    let response = NameResponse {
+        ok: true,
+        name: updated_name.into(),
+    };
+
+    return Ok(HttpResponse::Ok().json(response));
+}
+
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/names")
@@ -257,6 +305,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .service(name_new)
             .service(name_get)
             .service(name_register)
+            .service(name_transfer)
             .service(
                 web::resource("/{name}/update")
                     .put(name_update_data)

@@ -4,7 +4,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use sqlx::{Encode, Executor, Pool, Postgres, Type};
+use sqlx::{Acquire, Encode, Executor, Pool, Postgres, Type};
 
 use crate::{database::ModelExt, routes::PaginationParams};
 
@@ -124,7 +124,7 @@ impl<'q> ModelExt<'q> for Model {
     }
 }
 
-impl Model {
+impl<'q> Model {
     pub async fn sorted_by_date(
         pool: &Pool<Postgres>,
         pagination: &PaginationParams,
@@ -165,13 +165,13 @@ impl Model {
         Ok(model)
     }
 
-    pub async fn create(
-        pool: &Pool<Postgres>,
-        creation_data: TransactionCreateData,
-    ) -> sqlx::Result<Model> {
+    pub async fn create<A>(conn: A, creation_data: TransactionCreateData) -> sqlx::Result<Model>
+    where
+        A: Acquire<'q, Database = Postgres>,
+    {
         let metadata = creation_data.metadata.unwrap_or_default();
 
-        let mut tx = pool.begin().await?;
+        let mut tx = conn.begin().await?;
 
         let q = r#"INSERT INTO transactions(amount, "from", "to", metadata, transaction_type, date, name, sent_metaname, sent_name) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8) RETURNING *"#;
 
