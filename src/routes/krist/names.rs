@@ -15,7 +15,9 @@ use crate::models::names::{
     NameAvailablityResponse, NameBonusResponse, NameCostResponse, NameDataUpdateBody, NameJson,
     NameListResponse, NameResponse, RegisterNameRequest,
 };
+use crate::models::websockets::{WebSocketEvent, WebSocketMessage};
 use crate::utils::validation::is_valid_name;
+use crate::websockets::WebSocketServer;
 use crate::{AppState, errors::krist::KristError, routes::PaginationParams};
 
 #[get("")]
@@ -144,10 +146,13 @@ async fn name_get(
 #[post("/{name}")]
 async fn name_register(
     state: web::Data<AppState>,
+    websocket_server: web::Data<WebSocketServer>,
     name: web::Path<String>,
     details: web::Json<Option<RegisterNameRequest>>,
 ) -> Result<HttpResponse, KristError> {
     let pool = &state.pool;
+    let websocket_server = websocket_server.into_inner();
+
     let name = name.into_inner().trim().to_lowercase();
     let new_name_cost = Decimal::new(MINING_CONSTANTS.name_cost, 0);
 
@@ -209,6 +214,11 @@ async fn name_register(
         "Created transaction for name purchase with ID {}",
         transaction.id
     );
+
+    let event = WebSocketMessage::new_event(WebSocketEvent::Transaction {
+        transaction: transaction.into(),
+    });
+    websocket_server.broadcast_event(event).await;
 
     // Create the new name
     let name = Name::create(pool, name.clone(), verify_addr_resp.model.address).await?;
