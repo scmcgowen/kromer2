@@ -52,7 +52,7 @@ impl WebSocketServer {
     }
 
     pub async fn insert_session(&self, uuid: Uuid, session: Session, data: WebSocketTokenData) {
-        let subscriptions = DashSet::from_iter(vec![
+        let subscriptions = DashSet::from_iter([
             WebSocketSubscriptionType::OwnTransactions,
             WebSocketSubscriptionType::Blocks,
         ]);
