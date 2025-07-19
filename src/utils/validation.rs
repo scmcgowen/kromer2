@@ -1,16 +1,16 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-static ADDRESS_RE_V2: Lazy<Regex> = Lazy::new(|| Regex::new(r"^k[a-z0-9]{9}$").unwrap());
-static ADDRESS_LIST_RE: Lazy<Regex> = Lazy::new(|| {
+pub static ADDRESS_RE_V2: Lazy<Regex> = Lazy::new(|| Regex::new(r"^k[a-z0-9]{9}$").unwrap());
+pub static ADDRESS_LIST_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^(?:k[a-z0-9]{9}|[a-f0-9]{10})(?:,(?:k[a-z0-9]{9}|[a-f0-9]{10}))*$").unwrap()
 });
-static NAME_FETCH_RE: Lazy<Regex> =
+pub static NAME_FETCH_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?:xn--)?[a-z0-9-_]{1,64}$").unwrap());
-static NAME_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-z0-9_-]{1,64}$").unwrap());
-static NAME_A_RECORD_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[^\s.?#].[^\s]*$").unwrap());
-static _NAME_META_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(?:([a-z0-9-_]{1,32})@)?([a-z0-9]{1,64})\.kst$").unwrap());
+pub static NAME_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-z0-9_-]{1,64}$").unwrap());
+pub static NAME_A_RECORD_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[^\s.?#].[^\s]*$").unwrap());
+pub static _NAME_META_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^(?:([a-z0-9-_]{1,32})@)?([a-z0-9]{1,64})\.kro$").unwrap());
 
 #[inline(always)]
 pub fn is_valid_name(name: &str, fetching: bool) -> bool {
@@ -40,5 +40,5 @@ pub fn is_valid_a_record(a: &str) -> bool {
 
 #[inline(always)]
 pub fn strip_name_suffix(name: &str) -> String {
-    name.replace(r"\.kst$", "")
+    name.replace(".kro", "")
 }

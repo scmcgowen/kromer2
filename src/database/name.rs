@@ -73,7 +73,7 @@ impl<'q> Model {
         E: 'q + Executor<'q, Database = Postgres>,
     {
         let name = name.as_ref();
-        let q = "SELECT * FROM name WHERE name = $1;";
+        let q = "SELECT * FROM names WHERE name = $1;";
 
         sqlx::query_as(q).bind(name).fetch_optional(pool).await
     }

@@ -5,13 +5,17 @@ use crate::database::ModelExt;
 use crate::database::transaction::{Model as Transaction, TransactionCreateData, TransactionType};
 use crate::database::wallet::Model as Wallet;
 
+use crate::database::name::Model as Name;
 use crate::errors::krist::address::AddressError;
 use crate::errors::krist::generic::GenericError;
+use crate::errors::krist::name::NameError;
 use crate::errors::krist::transaction::TransactionError;
 use crate::models::transactions::{
     TransactionDetails, TransactionJson, TransactionListResponse, TransactionResponse,
 };
 use crate::models::websockets::{WebSocketEvent, WebSocketMessage};
+use crate::utils::validation::_NAME_META_RE;
+
 use crate::websockets::WebSocketServer;
 use crate::{AppState, errors::krist::KristError, routes::PaginationParams};
 
@@ -66,9 +70,32 @@ async fn transaction_create(
     let sender_verify_response = Wallet::verify_address(pool, details.private_key).await?;
     let sender = sender_verify_response.model;
 
-    let recipient = Wallet::fetch_by_address(pool, &details.to)
-        .await?
-        .ok_or_else(|| KristError::Address(AddressError::NotFound(details.to)))?;
+    let recipient: Wallet;
+    let mut is_name = false;
+
+    if _NAME_META_RE.is_match(&details.to) && !details.to.is_empty() && details.to.len() <= 64 {
+        let only_name = _NAME_META_RE
+            .captures(&details.to)
+            .expect("capture failed")
+            .get(2)
+            .expect("capture failed (2)")
+            .as_str();
+
+        let name = Name::fetch_by_name(pool, only_name)
+            .await?
+            .ok_or_else(|| KristError::Name(NameError::NameNotFound(details.to.clone())))?;
+
+        recipient = Wallet::fetch_by_address(pool, name.owner)
+            .await?
+            .ok_or_else(|| KristError::Address(AddressError::NotFound(details.to.clone())))?;
+        // I'm pretty sure it is impossible for this to error lmao
+
+        is_name = true;
+    } else {
+        recipient = Wallet::fetch_by_address(pool, &details.to)
+            .await?
+            .ok_or_else(|| KristError::Address(AddressError::NotFound(details.to.clone())))?;
+    }
 
     // Make sure to check the request to see if the funds are available.
     if sender.balance < amount {
@@ -81,17 +108,31 @@ async fn transaction_create(
         ));
     }
 
-    let creation_data = TransactionCreateData {
+    let mut creation_data = TransactionCreateData {
         from: sender.address,
         to: recipient.address,
         amount,
+        name: None,
+        sent_metaname: None,
+        sent_name: None,
         metadata: details.metadata,
         transaction_type: TransactionType::Transfer,
     };
+
+    if is_name {
+        if let Some(caps) = _NAME_META_RE.captures(&details.to) {
+            if let Some(metaname) = caps.get(1) {
+                creation_data.sent_metaname = Some(metaname.as_str().to_string());
+            }
+            if let Some(sent_name) = caps.get(2) {
+                creation_data.sent_name = Some(sent_name.as_str().to_string());
+            }
+        }
+    }
+
     let transaction = Transaction::create(pool, creation_data).await?;
     let transaction_json: TransactionJson = transaction.into();
 
-    // TODO: WebSockets.
     let event = WebSocketMessage::new_event(WebSocketEvent::Transaction {
         transaction: transaction_json.clone(),
     });

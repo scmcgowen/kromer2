@@ -29,11 +29,6 @@ struct GiveMoneyReq {
     pub amount: Decimal,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-struct Guh {
-    pub name: String,
-}
-
 #[post("/create")]
 async fn wallet_create(
     state: web::Data<AppState>,
@@ -83,6 +78,9 @@ async fn wallet_give_money(
         from: "serverwelf".into(),
         to: data.address,
         amount: amount,
+        name: None,
+        sent_metaname: None,
+        sent_name: None,
         metadata: None,
         transaction_type: TransactionType::Mined,
     };

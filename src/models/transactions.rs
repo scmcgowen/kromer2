@@ -63,7 +63,7 @@ pub struct TransactionJson {
     /// The time this transaction this was made, as an ISO-8601 string.
     pub time: String,
 
-    /// The name associated with this transaction, without the `.kst` suffix.
+    /// The name associated with this transaction, without the `.kro` suffix.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -87,10 +87,10 @@ impl From<transaction::Model> for TransactionJson {
             value: transaction.amount,
             time: transaction.date.to_rfc3339(),
             metadata: transaction.metadata,
-            sent_metaname: None,
-            sent_name: None,
+            sent_metaname: transaction.sent_metaname,
+            sent_name: transaction.sent_name,
             transaction_type: transaction.transaction_type.into(),
-            name: None,
+            name: transaction.name,
         }
     }
 }

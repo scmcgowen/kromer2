@@ -11,8 +11,8 @@ use crate::{database::ModelExt, routes::PaginationParams};
 use crate::database::wallet::Model as Wallet;
 use crate::errors::{KromerError, wallet::WalletError};
 
-static KST_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(?:([a-z0-9-_]{1,32})@)?([a-z0-9]{1,64})\.kst").unwrap());
+static KRO_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^(?:([a-z0-9-_]{1,32})@)?([a-z0-9]{1,64})\.kro").unwrap());
 
 #[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
 pub struct Model {
@@ -21,6 +21,9 @@ pub struct Model {
     pub from: Option<String>,
     pub to: String,
     pub metadata: Option<String>,
+    pub name: Option<String>,
+    pub sent_metaname: Option<String>,
+    pub sent_name: Option<String>,
     pub transaction_type: TransactionType,
     pub date: DateTime<Utc>,
 }
@@ -44,6 +47,9 @@ pub struct TransactionCreateData {
     pub to: String,
     pub amount: Decimal,
     pub metadata: Option<String>,
+    pub name: Option<String>,
+    pub sent_metaname: Option<String>,
+    pub sent_name: Option<String>,
     pub transaction_type: TransactionType,
 }
 
@@ -167,7 +173,7 @@ impl Model {
 
         let mut tx = pool.begin().await?;
 
-        let q = r#"INSERT INTO transactions(amount, "from", "to", metadata, transaction_type, date) VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING *"#;
+        let q = r#"INSERT INTO transactions(amount, "from", "to", metadata, transaction_type, date, name, sent_metaname, sent_name) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8) RETURNING *"#;
 
         // TODO: Factor this out to the db, thank god its a transaction now.
         let _ = Wallet::update_balance(&mut *tx, &creation_data.from, -creation_data.amount)
@@ -184,6 +190,9 @@ impl Model {
             .bind(&creation_data.to)
             .bind(metadata)
             .bind(creation_data.transaction_type)
+            .bind(creation_data.name)
+            .bind(creation_data.sent_metaname)
+            .bind(creation_data.sent_name)
             .fetch_one(&mut *tx)
             .await?;
         tx.commit().await?; // I'm not sure this is how it should be done? `Wallet::update_balance` also creates a transaction..
@@ -197,12 +206,12 @@ impl TransactionNameData {
     /// Takes any type that can be converted to a string reference.
     ///
     /// If the input is empty, returns a default `TransactionNameData`.
-    /// Otherwise parses according to the pattern: `meta@name.kst`
+    /// Otherwise parses according to the pattern: `meta@name.kro`
     ///
     /// # Examples
     /// ```
     /// use kromer::database::transaction::TransactionNameData;
-    /// let data = TransactionNameData::parse("meta@name.kst");
+    /// let data = TransactionNameData::parse("meta@name.kro");
     /// assert_eq!(data.meta, Some("meta".to_string()));
     /// assert_eq!(data.name, Some("name".to_string()));
     ///
@@ -215,7 +224,7 @@ impl TransactionNameData {
             return Self::default(); // Don't do useless parsing if the input is empty, thats silly.
         }
 
-        match KST_REGEX.captures(input) {
+        match KRO_REGEX.captures(input) {
             Some(captures) => {
                 let meta = captures.get(1).map(|m| m.as_str().to_string()); // TODO: Less allocating, should maybe use `&str` on the transaction models
                 let name = captures.get(2).map(|m| m.as_str().to_string());
@@ -233,7 +242,7 @@ impl TransactionNameData {
     /// # Examples
     /// ```
     /// use kromer::database::transaction::TransactionNameData;
-    /// let data = TransactionNameData::parse_opt(Some("meta@name.kst"));
+    /// let data = TransactionNameData::parse_opt(Some("meta@name.kro"));
     /// assert_eq!(data.meta, Some("meta".to_string()));
     /// assert_eq!(data.name, Some("name".to_string()));
     ///
@@ -256,7 +265,7 @@ impl TransactionNameData {
     /// # Examples
     /// ```
     /// use kromer::database::transaction::TransactionNameData;
-    /// let input = Some("meta@name.kst".to_string());
+    /// let input = Some("meta@name.kro".to_string());
     /// let data = TransactionNameData::parse_opt_ref(&input);
     /// assert_eq!(data.meta, Some("meta".to_string()));
     /// assert_eq!(data.name, Some("name".to_string()));

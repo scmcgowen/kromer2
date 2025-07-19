@@ -1,0 +1,4 @@
+-- Adds names to transactions
+ALTER TABLE IF EXISTS transactions ADD COLUMN IF NOT EXISTS name VARCHAR(128);
+ALTER TABLE IF EXISTS transactions ADD COLUMN IF NOT EXISTS sent_metaname VARCHAR(32);
+ALTER TABLE IF EXISTS transactions ADD COLUMN IF NOT EXISTS sent_name VARCHAR(32);
