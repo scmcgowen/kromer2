@@ -22,6 +22,7 @@ pub struct Model {
     pub private_key: Option<String>,
 
     #[serde(skip)]
+    #[sqlx(default)]
     pub names: Option<i64>,
 }
 
