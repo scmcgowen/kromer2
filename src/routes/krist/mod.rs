@@ -1,3 +1,4 @@
+mod lookup;
 mod misc;
 mod names;
 mod transactions;
@@ -12,7 +13,7 @@ pub async fn index_get() -> HttpResponse {
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
-    // cfg.service(web::scope("/lookup").configure(lookup::config));
+    cfg.service(web::scope("/lookup").configure(lookup::config));
 
     cfg.service(index_get);
 

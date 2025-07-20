@@ -36,7 +36,7 @@ pub struct AddressJson {
     #[serde(rename = "firstseen")]
     pub first_seen: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub names: Option<usize>,
+    pub names: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -53,7 +53,7 @@ impl From<wallet::Model> for AddressJson {
             total_in: wallet.total_in,
             total_out: wallet.total_out,
             first_seen: wallet.created_at.to_rfc3339(), // Is this really the right thing?
-            names: None, // NOTE: We'll have to manually edit this when asked for, lmao
+            names: wallet.names,
         }
     }
 }

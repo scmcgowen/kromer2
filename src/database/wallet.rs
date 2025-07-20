@@ -20,6 +20,9 @@ pub struct Model {
     pub total_in: Decimal,
     pub total_out: Decimal,
     pub private_key: Option<String>,
+
+    #[serde(skip)]
+    pub names: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -251,7 +254,6 @@ impl<'q> Model {
                 .fetch_one(&mut *tx)
                 .await?;
         if !wallet_exists {
-            tracing::debug!("");
             return Err(KromerError::Wallet(WalletError::NotFound));
         }
 
@@ -274,5 +276,42 @@ impl<'q> Model {
         tx.commit().await?;
 
         Ok(model)
+    }
+
+    pub async fn lookup_addresses<A>(
+        conn: A,
+        addresses: Vec<&str>,
+        fetch_names: bool,
+    ) -> sqlx::Result<Vec<Model>>
+    where
+        A: 'q + Acquire<'q, Database = Postgres>,
+    {
+        let mut conn = conn.acquire().await?;
+
+        let query = match fetch_names {
+            true => {
+                r#"SELECT wallets.*,
+                       COUNT(names.id) AS NAMES
+                FROM wallets
+                LEFT JOIN NAMES ON wallets.address = names.owner
+                WHERE wallets.address = ANY($1) GROUP BY wallets.id
+                  ORDER  BY NAMES DESC
+                "#
+            }
+            false => {
+                r#"SELECT
+                    wallets.*,
+                    CAST(0 AS BIGINT) as names
+                FROM wallets
+                WHERE wallets.address = ANY($1)
+                "#
+            }
+        };
+        let models = sqlx::query_as(query)
+            .bind(addresses)
+            .fetch_all(&mut *conn)
+            .await?;
+
+        Ok(models)
     }
 }
