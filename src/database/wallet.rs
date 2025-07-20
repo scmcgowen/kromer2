@@ -301,7 +301,7 @@ impl<'q> Model {
             false => {
                 r#"SELECT
                     wallets.*,
-                    CAST(0 AS BIGINT) as names
+                    NULL::BIGINT AS names
                 FROM wallets
                 WHERE wallets.address = ANY($1)
                 "#
