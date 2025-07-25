@@ -78,6 +78,10 @@ async fn transaction_create(
     }
 
     let sender_verify_response = Wallet::verify_address(pool, details.private_key).await?;
+    if !sender_verify_response.authed {
+        return Err(KristError::Address(AddressError::AuthFailed));
+    }
+
     let sender = sender_verify_response.model;
 
     let is_name = NAME_META_RE.is_match(&details.to);
