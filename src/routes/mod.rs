@@ -16,10 +16,19 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     let krist_json_cfg =
         web::JsonConfig::default().error_handler(|err, _req| KristError::JsonPayload(err).into());
 
-    cfg.service(web::scope("/api/v1").configure(v1::config));
+    let krist_path_config =
+        web::PathConfig::default().error_handler(|err, _req| KristError::Path(err).into());
+
+    cfg.service(
+        web::scope("/api/v1")
+            .app_data(krist_json_cfg.clone()) // TODO: Custom.
+            .app_data(krist_path_config.clone())
+            .configure(v1::config),
+    );
     cfg.service(
         web::scope("/api/krist")
             .app_data(krist_json_cfg)
+            .app_data(krist_path_config)
             .configure(krist::config),
     );
     cfg.service(
