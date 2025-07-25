@@ -5,7 +5,11 @@ pub mod name;
 pub mod transaction;
 pub mod websockets;
 
-use actix_web::{HttpResponse, error, http::StatusCode};
+use actix_web::{
+    HttpResponse,
+    error::{self, JsonPayloadError},
+    http::StatusCode,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -37,6 +41,9 @@ pub enum KristError {
     #[error(transparent)]
     Database(#[from] sqlx::Error), // Do we really want to expose all of this to the client?
 
+    #[error(transparent)]
+    JsonPayload(#[from] JsonPayloadError),
+
     #[error("{0}")]
     Custom(&'static str),
 }
@@ -55,6 +62,7 @@ impl KristErrorExt for KristError {
             KristError::Transaction(e) => e.error_type(),
             KristError::WebSocket(e) => e.error_type(),
             KristError::Database(_) => "internal_server_error",
+            KristError::JsonPayload(_) => "internal_server_error",
             KristError::Custom(e) => e, // Same way as krist, where message is the error type when no message type is given
         }
     }
@@ -72,6 +80,7 @@ impl error::ResponseError for KristError {
             KristError::Transaction(e) => e.status_code(),
             KristError::WebSocket(e) => e.status_code(),
             KristError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            KristError::JsonPayload(_) => StatusCode::INTERNAL_SERVER_ERROR,
             KristError::Custom(_) => StatusCode::BAD_REQUEST,
         }
     }
@@ -83,6 +92,16 @@ impl error::ResponseError for KristError {
             KristError::Name(e) => e.error_response(),
             KristError::Transaction(e) => e.error_response(),
             KristError::WebSocket(e) => e.error_response(),
+            KristError::JsonPayload(err) => {
+                let error = KristErrorResponse {
+                    ok: false,
+                    error: self.error_type(),
+                    message: err.to_string(),
+                    info: None,
+                };
+
+                HttpResponse::build(self.status_code()).json(error)
+            }
             KristError::Database(_) => {
                 let error = KristErrorResponse {
                     ok: false,

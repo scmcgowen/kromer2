@@ -12,8 +12,15 @@ pub async fn index_get() -> Result<HttpResponse, KristError> {
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
+    let krist_json_cfg =
+        web::JsonConfig::default().error_handler(|err, _req| KristError::JsonPayload(err).into());
+
     // cfg.service(web::scope("/api/v1").configure(v1::config));
-    cfg.service(web::scope("/api/krist").configure(krist::config));
+    cfg.service(
+        web::scope("/api/krist")
+            .app_data(krist_json_cfg)
+            .configure(krist::config),
+    );
     cfg.service(
         web::scope("/api/_internal")
             .guard(guards::internal_key_guard)

@@ -4,7 +4,12 @@ pub mod transaction;
 pub mod wallet;
 pub mod websocket;
 
-use actix_web::{HttpResponse, body::BoxBody, error, http::StatusCode};
+use actix_web::{
+    HttpResponse,
+    body::BoxBody,
+    error::{self, JsonPayloadError},
+    http::StatusCode,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, thiserror::Error)]
@@ -35,6 +40,9 @@ pub enum KromerError {
 
     #[error("IO error: {0}")]
     IO(#[from] std::io::Error),
+
+    #[error(transparent)]
+    JsonPayload(#[from] JsonPayloadError),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
