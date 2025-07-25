@@ -1,6 +1,7 @@
 mod internal;
 mod krist;
 mod not_found;
+mod v1;
 
 use actix_web::{HttpResponse, get, web};
 
@@ -15,7 +16,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     let krist_json_cfg =
         web::JsonConfig::default().error_handler(|err, _req| KristError::JsonPayload(err).into());
 
-    // cfg.service(web::scope("/api/v1").configure(v1::config));
+    cfg.service(web::scope("/api/v1").configure(v1::config));
     cfg.service(
         web::scope("/api/krist")
             .app_data(krist_json_cfg)

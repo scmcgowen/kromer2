@@ -1,5 +1,6 @@
 pub mod krist;
 pub mod name;
+pub mod player;
 pub mod transaction;
 pub mod wallet;
 pub mod websocket;
@@ -28,6 +29,9 @@ pub enum KromerError {
 
     #[error("Name error: {0}")]
     Name(#[from] name::NameError),
+
+    #[error(transparent)]
+    Player(#[from] player::PlayerError),
 
     #[error("Transaction error: {0}")]
     Transaction(#[from] transaction::TransactionError),
@@ -70,6 +74,7 @@ impl error::ResponseError for KromerError {
                 KromerError::Database(..) => "database",
                 KromerError::Wallet(..) => "wallet",
                 KromerError::Transaction(..) => "transaction",
+                KromerError::Player(..) => "player",
                 _ => "internal_server_error",
             },
             description: self.to_string(),

@@ -81,4 +81,31 @@ impl<'q> Model {
             .fetch_one(executor)
             .await
     }
+
+    pub async fn fetch_by_name<E>(pool: E, name: String) -> sqlx::Result<Option<Self>>
+    where
+        Self: Sized,
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
+        let q = "SELECT * FROM players WHERE name = $1";
+
+        sqlx::query_as(q).bind(name).fetch_optional(pool).await
+    }
+
+    /// Get this player's owned wallets.
+    pub async fn owned_wallets<E>(&self, executor: E) -> sqlx::Result<Vec<Wallet>>
+    where
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
+        let uuid = &self.id;
+
+        let q = r#"
+            SELECT wallet.*
+            FROM wallets wallet
+            JOIN players player ON wallet.id = ANY(player.owned_wallets)
+            WHERE player.id = $1;
+            "#;
+
+        sqlx::query_as(q).bind(uuid).fetch_all(executor).await
+    }
 }

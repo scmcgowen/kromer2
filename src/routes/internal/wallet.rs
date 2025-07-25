@@ -9,6 +9,7 @@ use crate::database::transaction::{Model as Transaction, TransactionCreateData, 
 use crate::database::wallet::Model as Wallet;
 
 use crate::database::ModelExt;
+use crate::errors::player::PlayerError;
 use crate::errors::wallet::WalletError;
 use crate::models::addresses::AddressCreationResponse;
 use crate::utils::crypto::generate_random_password;
@@ -103,11 +104,18 @@ async fn wallet_get_by_uuid(
     let uuid = uuid.into_inner();
     let pool = &state.pool;
 
-    let wallet = Wallet::fetch_by_id(pool, uuid).await?;
+    let mut tx = pool.begin().await?;
+
+    let player = Player::fetch_by_id(&mut *tx, &uuid)
+        .await?
+        .ok_or_else(|| KromerError::Player(PlayerError::NotFound))?;
+    let owned_wallets = player.owned_wallets(&mut *tx).await?;
+
+    tx.commit().await?;
 
     // // Maybe not the best? maybe censor? idk.
     Ok(HttpResponse::Ok().json(json!({
-        "wallet": wallet
+        "wallet": owned_wallets
     })))
 }
 
