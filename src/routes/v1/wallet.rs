@@ -5,7 +5,8 @@ use crate::database::ModelExt;
 use crate::database::player::Model as Player;
 
 use crate::errors::player::PlayerError;
-use crate::models::krist::addresses::AddressJson;
+use crate::models::kromer::responses::ApiResponse;
+use crate::models::kromer::wallets::Wallet as WalletResponse;
 use crate::{AppState, errors::KromerError};
 
 #[get("/by-player/{uuid}")]
@@ -25,13 +26,17 @@ async fn wallet_get_by_uuid(
 
     tx.commit().await?;
 
-    let safe_wallets: Vec<AddressJson> = owned_wallets
+    let sanitized_wallets: Vec<WalletResponse> = owned_wallets
         .into_iter()
         .map(|wallet| wallet.into())
         .collect();
 
-    // // Maybe not the best? maybe censor? idk.
-    Ok(HttpResponse::Ok().json(safe_wallets))
+    let response = ApiResponse {
+        data: Some(sanitized_wallets),
+        ..Default::default()
+    };
+
+    Ok(HttpResponse::Ok().json(response))
 }
 
 #[get("/by-name/{name}")]
@@ -51,13 +56,17 @@ async fn wallet_get_by_name(
 
     tx.commit().await?;
 
-    let safe_wallets: Vec<AddressJson> = owned_wallets
+    let sanitized_wallets: Vec<WalletResponse> = owned_wallets
         .into_iter()
         .map(|wallet| wallet.into())
         .collect();
 
-    // // Maybe not the best? maybe censor? idk.
-    Ok(HttpResponse::Ok().json(safe_wallets))
+    let response = ApiResponse {
+        data: Some(sanitized_wallets),
+        ..Default::default()
+    };
+
+    Ok(HttpResponse::Ok().json(response))
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {

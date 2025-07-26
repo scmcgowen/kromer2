@@ -11,7 +11,8 @@ use actix_web::{
     error::{self, JsonPayloadError},
     http::StatusCode,
 };
-use serde::{Deserialize, Serialize};
+
+use crate::models::kromer::responses::{ApiError, ApiResponse, None};
 
 #[derive(Debug, thiserror::Error)]
 pub enum KromerError {
@@ -21,13 +22,13 @@ pub enum KromerError {
     #[error("Validation error: {0}")]
     Validation(String),
 
-    #[error("Database error: {0}")]
+    #[error(transparent)]
     Database(#[from] sqlx::Error),
 
-    #[error("Wallet error: {0}")]
+    #[error(transparent)]
     Wallet(#[from] wallet::WalletError),
 
-    #[error("Name error: {0}")]
+    #[error(transparent)]
     Name(#[from] name::NameError),
 
     #[error(transparent)]
@@ -42,17 +43,11 @@ pub enum KromerError {
     #[error("Something went wrong: {0}")]
     Internal(&'static str),
 
-    #[error("IO error: {0}")]
+    #[error(transparent)]
     IO(#[from] std::io::Error),
 
     #[error(transparent)]
     JsonPayload(#[from] JsonPayloadError),
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ApiResponse<'a> {
-    pub message: &'a str,
-    pub description: String,
 }
 
 impl error::ResponseError for KromerError {
@@ -68,16 +63,24 @@ impl error::ResponseError for KromerError {
     }
 
     fn error_response(&self) -> HttpResponse<BoxBody> {
-        let response = ApiResponse {
-            message: match self {
-                KromerError::NotFound => "not_found",
-                KromerError::Database(..) => "database",
-                KromerError::Wallet(..) => "wallet",
-                KromerError::Transaction(..) => "transaction",
-                KromerError::Player(..) => "player",
+        let message = self.to_string();
+
+        let error = ApiError {
+            code: match self {
+                KromerError::NotFound => "resource_not_found_error",
+                KromerError::Database(..) => "database_error",
+                KromerError::Wallet(..) => "wallet_error",
+                KromerError::Transaction(..) => "transaction_error",
+                KromerError::Player(..) => "player_error",
                 _ => "internal_server_error",
             },
-            description: self.to_string(),
+            message: &message,
+            details: &[],
+        };
+
+        let response: ApiResponse<'_, None> = ApiResponse {
+            error: Some(error),
+            ..Default::default()
         };
 
         HttpResponse::build(self.status_code()).json(response)
