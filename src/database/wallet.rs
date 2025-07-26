@@ -155,17 +155,30 @@ impl<'q> Model {
             .await
     }
 
-    pub async fn transactions<S, E>(
+    pub async fn total_transactions<E>(&self, executor: E) -> sqlx::Result<i64>
+    where
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
+        let q = r#"
+            SELECT COUNT(*)
+            FROM transactions
+            WHERE "from" = $1 OR "to" = $1;
+    "#;
+
+        sqlx::query_scalar(q)
+            .bind(&self.address)
+            .fetch_one(executor)
+            .await
+    }
+
+    pub async fn transactions<E>(
+        &self,
         pool: E,
-        address: S,
         query: &AddressTransactionQuery,
     ) -> sqlx::Result<Vec<transaction::Model>>
     where
-        S: AsRef<str>,
         E: 'q + Executor<'q, Database = Postgres>,
     {
-        let address = address.as_ref().to_owned();
-
         let limit = query.limit.unwrap_or(50);
         let offset = query.offset.unwrap_or(0);
         let limit = limit.clamp(1, 1000);
@@ -177,7 +190,7 @@ impl<'q> Model {
         LIMIT $2 OFFSET $3;
     "#;
         sqlx::query_as(q)
-            .bind(address)
+            .bind(&self.address)
             .bind(limit)
             .bind(offset)
             .fetch_all(pool)

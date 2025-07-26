@@ -2,9 +2,7 @@ use actix_web::{HttpResponse, get, web};
 
 use crate::AppState;
 
-use crate::database::{
-    ModelExt, name::Model as Name, transaction::Model as Transaction, wallet::Model as Wallet,
-};
+use crate::database::{ModelExt, name::Model as Name, wallet::Model as Wallet};
 use crate::errors::krist::KristError;
 use crate::errors::krist::address::AddressError;
 use crate::models::krist::addresses::{AddressJson, AddressListResponse, AddressResponse};
@@ -100,8 +98,12 @@ async fn wallet_get_transactions(
 
     let mut tx = pool.begin().await?;
 
-    let total_transactions = Transaction::total_count(&mut *tx).await?;
-    let transactions = Wallet::transactions(&mut *tx, address, &params).await?;
+    let wallet = Wallet::fetch_by_address(&mut *tx, &address)
+        .await?
+        .ok_or_else(|| KristError::Address(AddressError::NotFound(address)))?;
+
+    let total_transactions = wallet.total_transactions(&mut *tx).await?;
+    let transactions = wallet.transactions(&mut *tx, &params).await?;
 
     tx.commit().await?;
 
@@ -111,7 +113,7 @@ async fn wallet_get_transactions(
     let response = TransactionListResponse {
         ok: true,
         count: transactions.len(),
-        total: total_transactions,
+        total: total_transactions as usize,
         transactions,
     };
 
