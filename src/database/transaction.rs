@@ -6,10 +6,11 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::{Acquire, Encode, Executor, Pool, Postgres, Type};
 
+use crate::database::{DatabaseError, Result};
 use crate::{database::ModelExt, routes::PaginationParams};
 
 use crate::database::wallet::Model as Wallet;
-use crate::errors::{KromerError, wallet::WalletError};
+use crate::errors::wallet::WalletError;
 
 static KRO_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?:([a-z0-9-_]{1,32})@)?([a-z0-9]{1,64})\.kro").unwrap());
@@ -87,7 +88,7 @@ impl From<TransactionType> for &str {
 
 #[async_trait]
 impl<'q> ModelExt<'q> for Model {
-    async fn fetch_by_id<T, E>(pool: E, id: T) -> sqlx::Result<Option<Self>>
+    async fn fetch_by_id<T, E>(pool: E, id: T) -> Result<Option<Self>>
     where
         Self: Sized,
         T: 'q + Encode<'q, Postgres> + Type<Postgres> + Send,
@@ -95,10 +96,14 @@ impl<'q> ModelExt<'q> for Model {
     {
         let q = "SELECT * FROM transactions WHERE id = $1";
 
-        sqlx::query_as(q).bind(id).fetch_optional(pool).await
+        sqlx::query_as(q)
+            .bind(id)
+            .fetch_optional(pool)
+            .await
+            .map_err(DatabaseError::Sqlx)
     }
 
-    async fn fetch_all<E>(pool: E, limit: i64, offset: i64) -> sqlx::Result<Vec<Self>>
+    async fn fetch_all<E>(pool: E, limit: i64, offset: i64) -> Result<Vec<Self>>
     where
         Self: Sized,
         E: 'q + Executor<'q, Database = Postgres>,
@@ -111,9 +116,10 @@ impl<'q> ModelExt<'q> for Model {
             .bind(offset)
             .fetch_all(pool)
             .await
+            .map_err(DatabaseError::Sqlx)
     }
 
-    async fn total_count<E>(pool: E) -> sqlx::Result<usize>
+    async fn total_count<E>(pool: E) -> Result<usize>
     where
         E: 'q + Executor<'q, Database = Postgres>,
     {
@@ -128,7 +134,7 @@ impl<'q> Model {
     pub async fn sorted_by_date(
         pool: &Pool<Postgres>,
         pagination: &PaginationParams,
-    ) -> sqlx::Result<Vec<Model>> {
+    ) -> Result<Vec<Model>> {
         let limit = pagination.limit.unwrap_or(50);
         let offset = pagination.offset.unwrap_or(0);
         let limit = limit.clamp(1, 1000);
@@ -140,32 +146,31 @@ impl<'q> Model {
             .bind(offset)
             .fetch_all(pool)
             .await
+            .map_err(DatabaseError::Sqlx)
     }
 
-    pub async fn create_no_update(
-        pool: &Pool<Postgres>,
+    pub async fn create_no_update<E>(
+        executor: E,
         creation_data: TransactionCreateData,
-    ) -> sqlx::Result<Model> {
+    ) -> Result<Model>
+    where
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
         let metadata = creation_data.metadata.unwrap_or_default();
-
-        let mut tx = pool.begin().await?;
-
         let q = r#"INSERT INTO transactions(amount, "from", "to", metadata, transaction_type, date) VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING *"#;
 
-        let model = sqlx::query_as(q)
+        sqlx::query_as(q)
             .bind(creation_data.amount)
             .bind(&creation_data.from)
             .bind(&creation_data.to)
             .bind(metadata)
             .bind(creation_data.transaction_type)
-            .fetch_one(&mut *tx)
-            .await?;
-        tx.commit().await?;
-
-        Ok(model)
+            .fetch_one(executor)
+            .await
+            .map_err(DatabaseError::Sqlx)
     }
 
-    pub async fn create<A>(conn: A, creation_data: TransactionCreateData) -> sqlx::Result<Model>
+    pub async fn create<A>(conn: A, creation_data: TransactionCreateData) -> Result<Model>
     where
         A: Acquire<'q, Database = Postgres>,
     {
@@ -173,16 +178,26 @@ impl<'q> Model {
 
         let mut tx = conn.begin().await?;
 
+        let sender = Wallet::fetch_by_address(&mut *tx, &creation_data.from)
+            .await?
+            .ok_or_else(|| {
+                DatabaseError::Wallet(WalletError::NotFound(creation_data.from.clone()))
+            })?;
+
+        let recipient = Wallet::fetch_by_address(&mut *tx, &creation_data.to)
+            .await?
+            .ok_or_else(|| {
+                DatabaseError::Wallet(WalletError::NotFound(creation_data.to.clone()))
+            })?;
+
+        let _ = sender
+            .update_balance(&mut *tx, -creation_data.amount)
+            .await?;
+        let _ = recipient
+            .update_balance(&mut *tx, creation_data.amount)
+            .await?;
+
         let q = r#"INSERT INTO transactions(amount, "from", "to", metadata, transaction_type, date, name, sent_metaname, sent_name) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8) RETURNING *"#;
-
-        // TODO: Factor this out to the db, thank god its a transaction now.
-        let _ = Wallet::update_balance(&mut *tx, &creation_data.from, -creation_data.amount)
-            .await
-            .map_err(|_| KromerError::Wallet(WalletError::NotFound));
-
-        let _ = Wallet::update_balance(&mut *tx, &creation_data.to, creation_data.amount)
-            .await
-            .map_err(|_| KromerError::Wallet(WalletError::NotFound));
 
         let model = sqlx::query_as(q)
             .bind(creation_data.amount)

@@ -3,6 +3,8 @@ use thiserror::Error;
 
 use super::{KristErrorExt, KristErrorResponse};
 
+use crate::errors::wallet;
+
 #[derive(Error, Debug)]
 pub enum AddressError {
     #[error("Address {0} not found")]
@@ -41,5 +43,14 @@ impl error::ResponseError for AddressError {
         };
 
         HttpResponse::build(self.status_code()).json(message)
+    }
+}
+
+impl From<wallet::WalletError> for AddressError {
+    fn from(value: wallet::WalletError) -> Self {
+        match value {
+            wallet::WalletError::NotFound(address) => AddressError::NotFound(address),
+            wallet::WalletError::AuthFailed => AddressError::AuthFailed,
+        }
     }
 }

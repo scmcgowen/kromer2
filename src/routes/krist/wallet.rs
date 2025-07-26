@@ -132,8 +132,13 @@ async fn wallet_get_names(
 
     let mut tx = pool.begin().await?;
 
+    let wallet = Wallet::fetch_by_address(&mut *tx, &address)
+        .await
+        .map_err(|err| KristError::from(err))?
+        .ok_or_else(|| KristError::Address(AddressError::NotFound(address)))?;
+
     let total_names = Name::total_count(&mut *tx).await?;
-    let names = Wallet::names(&mut *tx, address, &query).await?;
+    let names = wallet.names(&mut *tx, &query).await?;
 
     tx.commit().await?;
 

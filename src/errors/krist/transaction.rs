@@ -3,6 +3,8 @@ use thiserror::Error;
 
 use super::{KristErrorExt, KristErrorResponse};
 
+use crate::errors::transaction;
+
 #[derive(Error, Debug)]
 pub enum TransactionError {
     #[error("Insufficient funds")]
@@ -53,5 +55,17 @@ impl error::ResponseError for TransactionError {
         };
 
         HttpResponse::build(self.status_code()).json(error)
+    }
+}
+
+impl From<transaction::TransactionError> for TransactionError {
+    fn from(value: transaction::TransactionError) -> Self {
+        match value {
+            transaction::TransactionError::InsufficientFunds => Self::InsufficientFunds,
+            transaction::TransactionError::NotFound => Self::NotFound,
+            transaction::TransactionError::Disabled => Self::Disabled,
+            transaction::TransactionError::SameWalletTransfer => Self::SameWalletTransfer,
+            transaction::TransactionError::Conflict(param) => Self::Conflict(param),
+        }
     }
 }

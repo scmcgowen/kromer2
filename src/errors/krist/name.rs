@@ -3,6 +3,8 @@ use thiserror::Error;
 
 use super::{KristErrorExt, KristErrorResponse};
 
+use crate::errors::name;
+
 #[derive(Error, Debug)]
 pub enum NameError {
     #[error("Name {0} not found")]
@@ -47,6 +49,17 @@ impl KristErrorExt for NameError {
             NameError::NameTaken(_) => "name_taken",
             NameError::NotNameOwner(_) => "not_name_owner",
             NameError::InsufficientBalance => "insufficient_balance",
+        }
+    }
+}
+
+impl From<name::NameError> for NameError {
+    fn from(value: name::NameError) -> Self {
+        match value {
+            name::NameError::NameNotFound(name) => Self::NameNotFound(name),
+            name::NameError::NameTaken(name) => Self::NameTaken(name),
+            name::NameError::NotNameOwner(name) => Self::NotNameOwner(name),
+            name::NameError::InsufficientBalance => Self::InsufficientBalance,
         }
     }
 }

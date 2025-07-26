@@ -18,7 +18,7 @@ pub async fn perform_login(
 ) -> WebSocketMessage {
     let wallet = Wallet::verify_address(pool, private_key.clone())
         .await
-        .map_err(|_| KromerError::Wallet(WalletError::InvalidPassword));
+        .map_err(|_| KromerError::Wallet(WalletError::AuthFailed));
 
     // TODO: Refactor this fuckass match statement so we dont have a billion nested structs, lol
     match wallet {

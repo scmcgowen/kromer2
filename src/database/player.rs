@@ -2,8 +2,8 @@ use async_trait::async_trait;
 use sqlx::{Encode, Executor, Postgres, Type};
 use uuid::Uuid;
 
-use crate::database::ModelExt;
 use crate::database::wallet::Model as Wallet;
+use crate::database::{DatabaseError, ModelExt, Result};
 
 #[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
 pub struct Model {
@@ -14,7 +14,7 @@ pub struct Model {
 
 #[async_trait]
 impl<'q> ModelExt<'q> for Model {
-    async fn fetch_by_id<T, E>(pool: E, id: T) -> sqlx::Result<Option<Self>>
+    async fn fetch_by_id<T, E>(pool: E, id: T) -> Result<Option<Self>>
     where
         Self: Sized,
         T: 'q + Encode<'q, Postgres> + Type<Postgres> + Send,
@@ -22,10 +22,14 @@ impl<'q> ModelExt<'q> for Model {
     {
         let q = "SELECT * FROM players WHERE id = $1";
 
-        sqlx::query_as(q).bind(id).fetch_optional(pool).await
+        sqlx::query_as(q)
+            .bind(id)
+            .fetch_optional(pool)
+            .await
+            .map_err(DatabaseError::Sqlx)
     }
 
-    async fn fetch_all<E>(pool: E, limit: i64, offset: i64) -> sqlx::Result<Vec<Self>>
+    async fn fetch_all<E>(pool: E, limit: i64, offset: i64) -> Result<Vec<Self>>
     where
         Self: Sized,
         E: 'q + Executor<'q, Database = Postgres>,
@@ -38,9 +42,10 @@ impl<'q> ModelExt<'q> for Model {
             .bind(offset)
             .fetch_all(pool)
             .await
+            .map_err(DatabaseError::Sqlx)
     }
 
-    async fn total_count<E>(pool: E) -> sqlx::Result<usize>
+    async fn total_count<E>(pool: E) -> Result<usize>
     where
         E: 'q + Executor<'q, Database = Postgres>,
     {
@@ -52,7 +57,7 @@ impl<'q> ModelExt<'q> for Model {
 }
 
 impl<'q> Model {
-    pub async fn create<E>(executor: E, uuid: Uuid, name: String) -> sqlx::Result<Model>
+    pub async fn create<E>(executor: E, uuid: Uuid, name: String) -> Result<Model>
     where
         E: 'q + Executor<'q, Database = Postgres>,
     {
@@ -63,13 +68,10 @@ impl<'q> Model {
             .bind(name)
             .fetch_one(executor)
             .await
+            .map_err(DatabaseError::Sqlx)
     }
 
-    pub async fn add_wallet_to_owned<E>(
-        executor: E,
-        uuid: Uuid,
-        wallet: &Wallet,
-    ) -> sqlx::Result<Model>
+    pub async fn add_wallet_to_owned<E>(executor: E, uuid: Uuid, wallet: &Wallet) -> Result<Model>
     where
         E: 'q + Executor<'q, Database = Postgres>,
     {
@@ -80,20 +82,25 @@ impl<'q> Model {
             .bind(wallet.id)
             .fetch_one(executor)
             .await
+            .map_err(DatabaseError::Sqlx)
     }
 
-    pub async fn fetch_by_name<E>(pool: E, name: String) -> sqlx::Result<Option<Self>>
+    pub async fn fetch_by_name<E>(pool: E, name: String) -> Result<Option<Self>>
     where
         Self: Sized,
         E: 'q + Executor<'q, Database = Postgres>,
     {
         let q = "SELECT * FROM players WHERE name = $1";
 
-        sqlx::query_as(q).bind(name).fetch_optional(pool).await
+        sqlx::query_as(q)
+            .bind(name)
+            .fetch_optional(pool)
+            .await
+            .map_err(DatabaseError::Sqlx)
     }
 
     /// Get this player's owned wallets.
-    pub async fn owned_wallets<E>(&self, executor: E) -> sqlx::Result<Vec<Wallet>>
+    pub async fn owned_wallets<E>(&self, executor: E) -> Result<Vec<Wallet>>
     where
         E: 'q + Executor<'q, Database = Postgres>,
     {
@@ -106,6 +113,10 @@ impl<'q> Model {
             WHERE player.id = $1;
             "#;
 
-        sqlx::query_as(q).bind(uuid).fetch_all(executor).await
+        sqlx::query_as(q)
+            .bind(uuid)
+            .fetch_all(executor)
+            .await
+            .map_err(DatabaseError::Sqlx)
     }
 }

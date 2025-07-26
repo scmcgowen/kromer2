@@ -13,10 +13,7 @@ use crate::errors::player::PlayerError;
 use crate::errors::wallet::WalletError;
 use crate::models::krist::addresses::AddressCreationResponse;
 use crate::utils::crypto::generate_random_password;
-use crate::{
-    AppState,
-    errors::{KromerError, transaction::TransactionError},
-};
+use crate::{AppState, errors::KromerError};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct MinecraftUser {
@@ -40,15 +37,17 @@ async fn wallet_create(
 
     let private_key = generate_random_password();
 
-    // TODO: Figure out how to use a transaction for this. Previous attempts were a pain in the ass. I do not want to touch this. ~sov
+    let mut tx = pool.begin().await?;
 
     // I really dont like how this is done, oh well lol.
     let _player_model = Player::create(pool, user.uuid, user.name).await?;
     let wallet_verification_response = Wallet::verify_address(pool, &private_key).await?;
 
     let wallet = wallet_verification_response.model;
-    let updated_wallet = Wallet::set_balance(pool, wallet.address, dec!(100)).await?;
-    let _updated_player = Player::add_wallet_to_owned(pool, user.uuid, &updated_wallet).await?;
+    let updated_wallet = wallet.set_balance(&mut *tx, dec!(100)).await?;
+    let _updated_player = Player::add_wallet_to_owned(&mut *tx, user.uuid, &updated_wallet).await?;
+
+    tx.commit().await?;
 
     let resp = AddressCreationResponse {
         private_key,
@@ -68,12 +67,15 @@ async fn wallet_give_money(
     let amount = data.amount.round_dp(2);
 
     if amount < dec!(0.00) {
-        return Err(KromerError::Transaction(TransactionError::InvalidAmount));
+        return Err(KromerError::Validation("Invalid amount".into()));
     }
 
-    let updated_wallet = Wallet::update_balance(pool, &data.address, amount)
-        .await
-        .map_err(|_| KromerError::Wallet(WalletError::NotFound))?;
+    let mut tx = pool.begin().await?;
+
+    let wallet = Wallet::fetch_by_address(&mut *tx, &data.address)
+        .await?
+        .ok_or_else(|| KromerError::Wallet(WalletError::NotFound(data.address.clone())))?;
+    let updated_wallet = wallet.update_balance(&mut *tx, amount).await?;
 
     let creation_data = TransactionCreateData {
         from: "serverwelf".into(),

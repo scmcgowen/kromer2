@@ -3,9 +3,8 @@ use chrono::{DateTime, Utc};
 use rust_decimal::{Decimal, dec};
 use sqlx::{Acquire, Encode, Executor, Pool, Postgres, Type};
 
-use crate::database::{ModelExt, name, transaction};
+use crate::database::{DatabaseError, ModelExt, Result, name, transaction};
 use crate::errors::KromerError;
-use crate::errors::wallet::WalletError;
 use crate::models::krist::transactions::AddressTransactionQuery;
 use crate::routes::PaginationParams;
 use crate::utils::crypto;
@@ -34,7 +33,7 @@ pub struct VerifyResponse {
 
 #[async_trait]
 impl<'q> ModelExt<'q> for Model {
-    async fn fetch_by_id<T, E>(pool: E, id: T) -> sqlx::Result<Option<Self>>
+    async fn fetch_by_id<T, E>(pool: E, id: T) -> Result<Option<Self>>
     where
         Self: Sized,
         T: 'q + Encode<'q, Postgres> + Type<Postgres> + Send,
@@ -42,10 +41,14 @@ impl<'q> ModelExt<'q> for Model {
     {
         let q = "SELECT * FROM wallets WHERE id = $1";
 
-        sqlx::query_as(q).bind(id).fetch_optional(pool).await
+        sqlx::query_as(q)
+            .bind(id)
+            .fetch_optional(pool)
+            .await
+            .map_err(DatabaseError::Sqlx)
     }
 
-    async fn fetch_all<E>(pool: E, limit: i64, offset: i64) -> sqlx::Result<Vec<Self>>
+    async fn fetch_all<E>(pool: E, limit: i64, offset: i64) -> Result<Vec<Self>>
     where
         Self: Sized,
         E: 'q + Executor<'q, Database = Postgres>,
@@ -58,9 +61,10 @@ impl<'q> ModelExt<'q> for Model {
             .bind(offset)
             .fetch_all(pool)
             .await
+            .map_err(DatabaseError::Sqlx)
     }
 
-    async fn total_count<E>(pool: E) -> sqlx::Result<usize>
+    async fn total_count<E>(pool: E) -> Result<usize>
     where
         E: 'q + Executor<'q, Database = Postgres>,
     {
@@ -72,7 +76,7 @@ impl<'q> ModelExt<'q> for Model {
 }
 
 impl<'q> Model {
-    pub async fn fetch_by_address<S, E>(pool: E, address: S) -> sqlx::Result<Option<Self>>
+    pub async fn fetch_by_address<S, E>(pool: E, address: S) -> Result<Option<Self>>
     where
         S: AsRef<str>,
         E: 'q + Executor<'q, Database = Postgres>,
@@ -80,10 +84,14 @@ impl<'q> Model {
         let address = address.as_ref();
 
         let q = "SELECT * FROM wallets WHERE address = $1;";
-        sqlx::query_as(q).bind(address).fetch_optional(pool).await
+        sqlx::query_as(q)
+            .bind(address)
+            .fetch_optional(pool)
+            .await
+            .map_err(DatabaseError::Sqlx)
     }
 
-    pub async fn fetch_richest<E>(pool: E, limit: i64, offset: i64) -> sqlx::Result<Vec<Self>>
+    pub async fn fetch_richest<E>(pool: E, limit: i64, offset: i64) -> Result<Vec<Self>>
     where
         E: 'q + Executor<'q, Database = Postgres>,
     {
@@ -95,13 +103,11 @@ impl<'q> Model {
             .bind(offset)
             .fetch_all(pool)
             .await
+            .map_err(DatabaseError::Sqlx)
     }
 
     #[tracing::instrument(skip(pool))]
-    pub async fn verify_address<S>(
-        pool: &Pool<Postgres>,
-        private_key: S,
-    ) -> sqlx::Result<VerifyResponse>
+    pub async fn verify_address<S>(pool: &Pool<Postgres>, private_key: S) -> Result<VerifyResponse>
     where
         S: AsRef<str> + std::fmt::Debug,
     {
@@ -197,80 +203,46 @@ impl<'q> Model {
             .await
     }
 
-    pub async fn names<S, E>(
+    pub async fn names<E>(
+        &self,
         pool: E,
-        address: S,
         query: &PaginationParams,
     ) -> sqlx::Result<Vec<name::Model>>
     where
-        S: AsRef<str>,
         E: 'q + Executor<'q, Database = Postgres>,
     {
-        let address = address.as_ref().to_owned();
-
         let limit = query.limit.unwrap_or(50);
         let offset = query.offset.unwrap_or(0);
         let limit = limit.clamp(1, 1000);
 
         let q = r#"SELECT * FROM names WHERE owner = $1 ORDER BY name ASC LIMIT $2 OFFSET $3;"#;
         sqlx::query_as(q)
-            .bind(address)
+            .bind(&self.address)
             .bind(limit)
             .bind(offset)
             .fetch_all(pool)
             .await
     }
 
-    pub async fn set_balance<S>(
-        executor: &Pool<Postgres>,
-        address: S,
-        balance: Decimal,
-    ) -> Result<Model, KromerError>
+    pub async fn set_balance<E>(&self, executor: E, balance: Decimal) -> Result<Model, KromerError>
     where
-        S: AsRef<str>,
+        E: 'q + Executor<'q, Database = Postgres>,
     {
-        let address = address.as_ref();
-
-        // Just make sure that wallet exists
-        // TODO: Make a generic function on ModelExt trait that returns whether or not something exists.
-        let _wallet = Self::fetch_by_address(executor, address)
-            .await?
-            .ok_or_else(|| KromerError::Wallet(WalletError::NotFound))?;
-
         let q = "UPDATE wallets SET balance = $1 WHERE address = $2 RETURNING *";
 
         sqlx::query_as(q)
             .bind(balance)
-            .bind(address)
+            .bind(&self.address)
             .fetch_one(executor)
             .await
             .map_err(KromerError::Database)
     }
 
-    #[tracing::instrument(skip(conn))]
-    pub async fn update_balance<S, A>(
-        conn: A,
-        address: S,
-        balance: Decimal,
-    ) -> Result<Model, KromerError>
+    #[tracing::instrument(skip(executor))]
+    pub async fn update_balance<E>(&self, executor: E, balance: Decimal) -> sqlx::Result<Model>
     where
-        S: AsRef<str> + std::fmt::Debug,
-        A: Acquire<'q, Database = Postgres>,
+        E: 'q + Executor<'q, Database = Postgres>,
     {
-        let mut tx = conn.begin().await?;
-        let address = address.as_ref();
-
-        // Just make sure that wallet exists
-        // TODO: Make a generic function on ModelExt trait that returns whether or not something exists.
-        let wallet_exists: bool =
-            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM wallets WHERE address = $1)")
-                .bind(address)
-                .fetch_one(&mut *tx)
-                .await?;
-        if !wallet_exists {
-            return Err(KromerError::Wallet(WalletError::NotFound));
-        }
-
         let q = r#"
         UPDATE wallets
         SET
@@ -281,15 +253,11 @@ impl<'q> Model {
         RETURNING *;
         "#;
 
-        let model = sqlx::query_as(q)
+        sqlx::query_as(q)
             .bind(balance)
-            .bind(address)
-            .fetch_one(&mut *tx)
+            .bind(&self.address)
+            .fetch_one(executor)
             .await
-            .map_err(KromerError::Database)?;
-        tx.commit().await?;
-
-        Ok(model)
     }
 
     pub async fn lookup_addresses<A>(
