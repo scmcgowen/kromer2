@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::models::{names::NameJson, transactions::TransactionJson};
+use crate::models::krist::{names::NameJson, transactions::TransactionJson};
 
 /// All the names owned by the given address(es), or the whole network if no addresses are specified.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

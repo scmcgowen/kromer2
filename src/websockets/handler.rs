@@ -5,7 +5,7 @@ use uuid::Uuid;
 use super::{WebSocketServer, types::convert_to_iso_string};
 use crate::{
     errors::{KromerError, websocket::WebSocketError},
-    models::{
+    models::krist::{
         motd::{Constants, CurrencyInfo, DetailedMotd, PackageInfo},
         websockets::{WebSocketMessage, WebSocketMessageInner},
     },

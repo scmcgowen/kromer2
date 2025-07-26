@@ -15,7 +15,7 @@ use crate::AppState;
 use crate::database::wallet::Model as Wallet;
 use crate::errors::krist::KristErrorExt;
 use crate::errors::krist::{KristError, address::AddressError, websockets::WebSocketError};
-use crate::models::websockets::{WebSocketMessage, WebSocketMessageInner};
+use crate::models::krist::websockets::{WebSocketMessage, WebSocketMessageInner};
 use crate::websockets::types::common::WebSocketTokenData;
 use crate::websockets::types::convert_to_iso_string;
 use crate::websockets::{CLIENT_TIMEOUT, HEARTBEAT_INTERVAL, WebSocketServer, handler, utils};

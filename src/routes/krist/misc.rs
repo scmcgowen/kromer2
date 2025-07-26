@@ -5,7 +5,7 @@ use crate::{
     AppState,
     database::wallet::Model as Wallet,
     errors::krist::KristError,
-    models::{
+    models::krist::{
         auth::{AddressAuthenticationResponse, LoginDetails},
         misc::{MoneySupplyResponse, PrivateKeyAddressResponse, WalletVersionResponse},
         motd::{Constants, CurrencyInfo, DetailedMotd, DetailedMotdResponse, PackageInfo},

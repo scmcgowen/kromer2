@@ -6,7 +6,7 @@ use sqlx::{Acquire, Encode, Executor, Pool, Postgres, Type};
 use crate::database::{ModelExt, name, transaction};
 use crate::errors::KromerError;
 use crate::errors::wallet::WalletError;
-use crate::models::transactions::AddressTransactionQuery;
+use crate::models::krist::transactions::AddressTransactionQuery;
 use crate::routes::PaginationParams;
 use crate::utils::crypto;
 

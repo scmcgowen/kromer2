@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::models::transactions::TransactionJson;
+use crate::models::krist::transactions::TransactionJson;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LookupResponse {

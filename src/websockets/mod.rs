@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use types::common::{WebSocketSessionData, WebSocketSubscriptionType, WebSocketTokenData};
 
-use crate::models::websockets::{WebSocketEvent, WebSocketMessage, WebSocketMessageInner};
+use crate::models::krist::websockets::{WebSocketEvent, WebSocketMessage, WebSocketMessageInner};
 
 pub const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 pub const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);

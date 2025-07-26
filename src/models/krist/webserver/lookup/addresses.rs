@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::models::addresses::AddressJson;
+use crate::models::krist::addresses::AddressJson;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LookupResponse {

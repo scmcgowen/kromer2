@@ -4,11 +4,9 @@ use actix_web::{HttpResponse, get, web};
 
 use crate::database::wallet::Model as Wallet;
 
-use crate::models::addresses::AddressJson;
-use crate::models::webserver::lookup::addresses::LookupResponse;
-use crate::{
-    AppState, errors::krist::KristError, models::webserver::lookup::addresses::QueryParameters,
-};
+use crate::models::krist::addresses::AddressJson;
+use crate::models::krist::webserver::lookup::addresses::{LookupResponse, QueryParameters};
+use crate::{AppState, errors::krist::KristError};
 
 #[get("/{addresses}")]
 async fn addresses_lookup(

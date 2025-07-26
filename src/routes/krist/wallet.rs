@@ -1,15 +1,15 @@
 use actix_web::{HttpResponse, get, web};
 
 use crate::AppState;
-use crate::models::names::{NameJson, NameListResponse};
 
 use crate::database::{
     ModelExt, name::Model as Name, transaction::Model as Transaction, wallet::Model as Wallet,
 };
 use crate::errors::krist::KristError;
 use crate::errors::krist::address::AddressError;
-use crate::models::addresses::{AddressJson, AddressListResponse, AddressResponse};
-use crate::models::transactions::{
+use crate::models::krist::addresses::{AddressJson, AddressListResponse, AddressResponse};
+use crate::models::krist::names::{NameJson, NameListResponse};
+use crate::models::krist::transactions::{
     AddressTransactionQuery, TransactionJson, TransactionListResponse,
 };
 use crate::routes::PaginationParams;

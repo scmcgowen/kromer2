@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::database::wallet::Model as Wallet;
 use crate::errors::KromerError;
 use crate::errors::wallet::WalletError;
-use crate::models::websockets::{
+use crate::models::krist::websockets::{
     WebSocketMessage, WebSocketMessageInner, WebSocketMessageResponse,
 };
 use crate::websockets::WebSocketServer;

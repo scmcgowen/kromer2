@@ -7,12 +7,12 @@ use crate::database::transaction::Model as Transaction;
 use crate::database::transaction::{TransactionCreateData, TransactionType};
 use crate::database::wallet::Model as Wallet;
 
-use crate::models::websockets::{WebSocketEvent, WebSocketMessage};
+use crate::models::krist::websockets::{WebSocketEvent, WebSocketMessage};
 use crate::websockets::WebSocketServer;
 use crate::{
     database::ModelExt,
     errors::krist::{KristError, address::AddressError, generic::GenericError, name::NameError},
-    models::names::NameDataUpdateBody,
+    models::krist::names::NameDataUpdateBody,
     routes::PaginationParams,
     utils::validation,
 };

@@ -10,12 +10,12 @@ use crate::errors::krist::address::AddressError;
 use crate::errors::krist::generic::GenericError;
 use crate::errors::krist::name::NameError;
 use crate::errors::krist::transaction::TransactionError;
-use crate::models::motd::MINING_CONSTANTS;
-use crate::models::names::{
+use crate::models::krist::motd::MINING_CONSTANTS;
+use crate::models::krist::names::{
     NameAvailablityResponse, NameBonusResponse, NameCostResponse, NameDataUpdateBody, NameJson,
     NameListResponse, NameResponse, RegisterNameRequest, TransferNameRequest,
 };
-use crate::models::websockets::{WebSocketEvent, WebSocketMessage};
+use crate::models::krist::websockets::{WebSocketEvent, WebSocketMessage};
 use crate::utils::validation;
 use crate::websockets::WebSocketServer;
 use crate::{AppState, errors::krist::KristError, routes::PaginationParams};

@@ -11,7 +11,7 @@ use crate::database::wallet::Model as Wallet;
 use crate::database::ModelExt;
 use crate::errors::player::PlayerError;
 use crate::errors::wallet::WalletError;
-use crate::models::addresses::AddressCreationResponse;
+use crate::models::krist::addresses::AddressCreationResponse;
 use crate::utils::crypto::generate_random_password;
 use crate::{
     AppState,

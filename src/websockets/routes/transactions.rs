@@ -3,7 +3,7 @@ use sqlx::{Pool, Postgres};
 
 use crate::{
     database::transaction::{TransactionCreateData, TransactionType},
-    models::websockets::{
+    models::krist::websockets::{
         WebSocketEvent, WebSocketMessage, WebSocketMessageInner, WebSocketMessageResponse,
     },
     websockets::WebSocketServer,

@@ -3,7 +3,9 @@ use std::str::FromStr;
 use uuid::Uuid;
 
 use crate::{
-    models::websockets::{WebSocketMessage, WebSocketMessageInner, WebSocketMessageResponse},
+    models::krist::websockets::{
+        WebSocketMessage, WebSocketMessageInner, WebSocketMessageResponse,
+    },
     websockets::{WebSocketServer, types::common::WebSocketSubscriptionType},
 };
 

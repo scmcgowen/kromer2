@@ -12,10 +12,10 @@ use crate::errors::krist::address::AddressError;
 use crate::errors::krist::generic::GenericError;
 use crate::errors::krist::name::NameError;
 use crate::errors::krist::transaction::TransactionError;
-use crate::models::transactions::{
+use crate::models::krist::transactions::{
     TransactionDetails, TransactionJson, TransactionListResponse, TransactionResponse,
 };
-use crate::models::websockets::{WebSocketEvent, WebSocketMessage};
+use crate::models::krist::websockets::{WebSocketEvent, WebSocketMessage};
 use crate::utils::validation::NAME_META_RE;
 
 use crate::websockets::WebSocketServer;

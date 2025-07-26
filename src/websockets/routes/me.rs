@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::{
     database::wallet::Model as Wallet,
-    models::{
+    models::krist::{
         addresses::AddressJson,
         websockets::{WebSocketMessage, WebSocketMessageInner, WebSocketMessageResponse},
     },

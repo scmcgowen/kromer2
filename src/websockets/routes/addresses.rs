@@ -1,6 +1,6 @@
 use sqlx::{Pool, Postgres};
 
-use crate::models::websockets::{
+use crate::models::krist::websockets::{
     WebSocketMessage, WebSocketMessageInner, WebSocketMessageResponse,
 };
 

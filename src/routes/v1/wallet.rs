@@ -5,7 +5,7 @@ use crate::database::ModelExt;
 use crate::database::player::Model as Player;
 
 use crate::errors::player::PlayerError;
-use crate::models::addresses::AddressJson;
+use crate::models::krist::addresses::AddressJson;
 use crate::{AppState, errors::KromerError};
 
 #[get("/by-player/{uuid}")]
