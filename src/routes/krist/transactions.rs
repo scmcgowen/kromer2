@@ -124,11 +124,11 @@ async fn transaction_create(
         from: sender.address,
         to: recipient.address,
         amount,
-        name: None,
         sent_metaname,
         sent_name,
         metadata: details.metadata,
         transaction_type: TransactionType::Transfer,
+        ..Default::default()
     };
 
     let transaction = Transaction::create(pool, creation_data).await?;

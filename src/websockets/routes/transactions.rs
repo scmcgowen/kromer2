@@ -103,11 +103,9 @@ pub async fn make_transaction(
         from: sender.address.clone(),
         to: recipient.address.clone(),
         amount,
-        name: None,
-        sent_metaname: None,
-        sent_name: None,
         metadata: metadata.clone(),
         transaction_type: TransactionType::Transfer,
+        ..Default::default()
     };
 
     let response = Transaction::create(pool, creation_data).await;

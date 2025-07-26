@@ -42,7 +42,7 @@ pub enum TransactionType {
     Transfer,
 }
 
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct TransactionCreateData {
     pub from: String,
     pub to: String,

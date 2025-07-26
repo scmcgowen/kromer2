@@ -71,14 +71,14 @@ impl<'q> Model {
             .map_err(DatabaseError::Sqlx)
     }
 
-    pub async fn add_wallet_to_owned<E>(executor: E, uuid: Uuid, wallet: &Wallet) -> Result<Model>
+    pub async fn add_wallet_to_owned<E>(&self, executor: E, wallet: &Wallet) -> Result<Model>
     where
         E: 'q + Executor<'q, Database = Postgres>,
     {
         let q = "UPDATE players SET owned_wallets = array_append(owned_wallets, $2) WHERE id = $1 RETURNING *;";
 
         sqlx::query_as(q)
-            .bind(uuid)
+            .bind(&self.id)
             .bind(wallet.id)
             .fetch_one(executor)
             .await

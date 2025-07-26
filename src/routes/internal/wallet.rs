@@ -40,12 +40,15 @@ async fn wallet_create(
     let mut tx = pool.begin().await?;
 
     // I really dont like how this is done, oh well lol.
-    let _player_model = Player::create(pool, user.uuid, user.name).await?;
+    let player = Player::create(pool, user.uuid, user.name).await?;
     let wallet_verification_response = Wallet::verify_address(pool, &private_key).await?;
 
     let wallet = wallet_verification_response.model;
     let updated_wallet = wallet.set_balance(&mut *tx, dec!(100)).await?;
-    let _updated_player = Player::add_wallet_to_owned(&mut *tx, user.uuid, &updated_wallet).await?;
+
+    let _updated_player = player
+        .add_wallet_to_owned(&mut *tx, &updated_wallet)
+        .await?;
 
     tx.commit().await?;
 
@@ -81,11 +84,8 @@ async fn wallet_give_money(
         from: "serverwelf".into(),
         to: data.address,
         amount: amount,
-        name: None,
-        sent_metaname: None,
-        sent_name: None,
-        metadata: None,
         transaction_type: TransactionType::Mined,
+        ..Default::default()
     };
     let transaction = Transaction::create_no_update(pool, creation_data).await?; // bitches.
     tracing::info!(

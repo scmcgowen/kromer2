@@ -237,11 +237,9 @@ impl<'q> Model {
             from: self.owner,
             to: new_owner_address,
             amount: dec!(0),
-            metadata: None,
             name: Some(self.name),
-            sent_metaname: None,
-            sent_name: None,
             transaction_type: TransactionType::NameTransfer,
+            ..Default::default()
         };
 
         let transaction = Transaction::create(&mut *tx, creation_data).await?;
