@@ -24,7 +24,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = web::Data::new(AppState { pool });
 
     let http_server = HttpServer::new(move || {
-        let cors = Cors::permissive(); // TODO: NOT USE PERMISSIVE, LOL
+        let cors = Cors::default()
+            .allow_any_origin()
+            .allowed_methods(["GET", "POST", "PUT"])
+            .allow_any_header()
+            .max_age(3600);
 
         App::new()
             .app_data(state.clone())
