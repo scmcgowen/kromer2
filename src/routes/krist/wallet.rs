@@ -25,7 +25,7 @@ async fn wallet_list(
 
     let mut tx = pool.begin().await?;
 
-    let count = Wallet::total_count(&mut *tx).await?;
+    let total = Wallet::total_count(&mut *tx).await?;
     let wallets = Wallet::fetch_all(&mut *tx, limit, offset).await?;
 
     tx.commit().await?;
@@ -34,8 +34,8 @@ async fn wallet_list(
 
     let list_response = AddressListResponse {
         ok: true,
-        count,
-        total: addresses.len(),
+        count: addresses.len(),
+        total,
         addresses,
     };
 
