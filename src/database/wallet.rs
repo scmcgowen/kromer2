@@ -238,7 +238,6 @@ impl<'q> Model {
             .map_err(KromerError::Database)
     }
 
-    #[tracing::instrument(skip(executor))]
     pub async fn update_balance<E>(&self, executor: E, balance: Decimal) -> sqlx::Result<Model>
     where
         E: 'q + Executor<'q, Database = Postgres>,
@@ -304,11 +303,11 @@ impl<'q> Model {
     {
         let address = address.as_ref();
 
-        let q = r#"SELECT wallets.*, 
-                COUNT(names.id) AS NAMES 
-            FROM wallets 
-            LEFT JOIN NAMES ON wallets.address = names.owner 
-            WHERE wallets.address = $1 GROUP BY wallets.id 
+        let q = r#"SELECT wallets.*,
+                COUNT(names.id) AS NAMES
+            FROM wallets
+            LEFT JOIN NAMES ON wallets.address = names.owner
+            WHERE wallets.address = $1 GROUP BY wallets.id
             ORDER BY NAMES DESC"#;
         sqlx::query_as(q)
             .bind(address)
