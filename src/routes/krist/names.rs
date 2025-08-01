@@ -148,7 +148,7 @@ async fn name_register(
     state: web::Data<AppState>,
     websocket_server: web::Data<WebSocketServer>,
     name: web::Path<String>,
-    details: web::Json<Option<RegisterNameRequest>>,
+    details: Option<web::Json<RegisterNameRequest>>,
 ) -> Result<HttpResponse, KristError> {
     let pool = &state.pool;
     let websocket_server = websocket_server.into_inner();
