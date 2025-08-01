@@ -156,16 +156,15 @@ async fn name_register(
     let name = name.into_inner().trim().to_lowercase();
     let new_name_cost = Decimal::new(MINING_CONSTANTS.name_cost, 0);
 
-    let private_key = details
-        .as_ref()
-        .map(|json_details| json_details.private_key.clone());
-
-    // Manual error handling here
-    if private_key.is_none() {
-        return Err(KristError::Generic(GenericError::MissingParameter(
-            "privatekey".to_string(),
-        )));
-    }
+    let private_key = details.map(|request| request.0.private_key);
+    let private_key = match private_key {
+        Some(key) => key,
+        None => {
+            return Err(KristError::Generic(GenericError::MissingParameter(
+                "privatekey".to_string(),
+            )));
+        }
+    };
 
     if !validation::is_valid_name(&name, false) {
         return Err(KristError::Generic(GenericError::InvalidParameter(
@@ -173,12 +172,7 @@ async fn name_register(
         )));
     }
 
-    let verify_addr_resp = Wallet::verify_address(
-        pool,
-        // Unwrap should be okay
-        private_key.unwrap().clone(),
-    )
-    .await?;
+    let verify_addr_resp = Wallet::verify_address(pool, &private_key).await?;
 
     if !verify_addr_resp.authed {
         tracing::info!(
@@ -188,8 +182,6 @@ async fn name_register(
         return Err(KristError::Address(AddressError::AuthFailed));
     }
 
-    // TODO: Rate limit check. Apply a 2x cost to name events
-
     // Reject insufficient funds
     if verify_addr_resp.model.balance < new_name_cost {
         return Err(KristError::Transaction(TransactionError::InsufficientFunds));
@@ -198,7 +190,7 @@ async fn name_register(
     // Create the transaction
     let creation_data = TransactionCreateData {
         from: verify_addr_resp.model.address.clone(),
-        to: "name".to_string(),
+        to: "serverwelf".to_string(),
         amount: new_name_cost,
         transaction_type: TransactionType::NamePurchase,
         ..Default::default()
