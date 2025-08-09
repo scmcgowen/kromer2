@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .wrap(middleware::NormalizePath::trim())
             .wrap(cors)
             .configure(routes::config)
-        // .default_service(web::route().to(routes::not_found::not_found))
+            .default_service(web::route().to(routes::not_found::not_found))
     })
     .bind(&server_url)?
     .run();
