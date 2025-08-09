@@ -10,6 +10,7 @@ use crate::{
     websockets::WebSocketServer,
 };
 
+#[tracing::instrument(skip_all)]
 pub async fn get_myself(
     pool: &Pool<Postgres>,
     server: &WebSocketServer,

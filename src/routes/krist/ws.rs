@@ -67,7 +67,7 @@ pub async fn setup_ws(
 }
 
 #[get("/gateway/{token}")]
-#[tracing::instrument(name = "ws_gateway_route", level = "info", fields(token = *token), skip_all,)]
+#[tracing::instrument(name = "ws_gateway_route", level = "info", fields(token = *token), skip_all)]
 pub async fn gateway(
     req: HttpRequest,
     body: web::Payload,
@@ -77,7 +77,7 @@ pub async fn gateway(
 ) -> Result<HttpResponse, actix_web::Error> {
     let server = server.into_inner(); // lol
     let token = token.into_inner();
-    tracing::info!("Request with token string: {token}");
+    tracing::info!("New client connected");
 
     let (response, mut session, stream) = actix_ws::handle(&req, body)?;
 
@@ -139,6 +139,7 @@ pub async fn gateway(
         loop {
             interval.tick().await;
             if session2.ping(b"").await.is_err() {
+                tracing::error!("Failed to send ping message to session");
                 break;
             }
 
@@ -216,6 +217,7 @@ pub async fn gateway(
                 }
 
                 AggregatedMessage::Pong(_) => {
+                    tracing::trace!("Received a pong back! :D");
                     *alive.lock().await = Instant::now();
                 }
 

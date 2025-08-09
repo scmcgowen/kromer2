@@ -9,6 +9,7 @@ use crate::models::krist::websockets::{
 };
 use crate::websockets::WebSocketServer;
 
+#[tracing::instrument(skip_all)]
 pub async fn perform_login(
     pool: &Pool<Postgres>,
     server: &WebSocketServer,
@@ -33,6 +34,8 @@ pub async fn perform_login(
                     .expect("Expected the session to exist, why doesn't it?");
                 session.address = wallet.address.clone();
                 session.private_key = Some(private_key);
+
+                tracing::debug!("Session successfully logged in");
 
                 WebSocketMessage {
                     ok: Some(true),

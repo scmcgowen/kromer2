@@ -6,6 +6,7 @@ use crate::models::krist::websockets::{
 
 use crate::database::wallet::Model as Wallet;
 
+#[tracing::instrument(skip_all)]
 pub async fn get_address(
     pool: &Pool<Postgres>,
     address: String,

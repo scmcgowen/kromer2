@@ -12,6 +12,7 @@ use crate::{
 use crate::database::transaction::Model as Transaction;
 use crate::database::wallet::Model as Wallet;
 
+#[tracing::instrument(skip(pool, server, msg_id, private_key))]
 pub async fn make_transaction(
     pool: &Pool<Postgres>,
     private_key: String,
