@@ -81,8 +81,9 @@ impl WebSocketServer {
 
         let uuid = Uuid::new_v4();
 
-        let _ = inner.pending_tokens.insert(uuid, token_data);
         tracing::debug!("Inserting token {uuid} into cache");
+        let token_data = inner.pending_tokens.insert(uuid, token_data);
+        drop(token_data); // Drop manually to ensure the hashmap bucket is no longer locked.
 
         actix_web::rt::spawn(async move {
             time::sleep(TOKEN_EXPIRATION).await;
