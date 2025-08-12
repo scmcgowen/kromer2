@@ -87,10 +87,10 @@ impl WebSocketServer {
         actix_web::rt::spawn(async move {
             time::sleep(TOKEN_EXPIRATION).await;
 
+            // I don't think that this if statement would ever fail? considering we literally just put the fucking token in the map, lol.
             let inner_mutex = inner_clone.lock().await;
-            if inner_mutex.pending_tokens.contains_key(&uuid) {
-                tracing::info!("Removing token {uuid}, expired");
-                inner_mutex.pending_tokens.remove(&uuid);
+            if let Some(_) = inner_mutex.pending_tokens.remove(&uuid) {
+                tracing::info!("Removed expired token {uuid}");
             }
         });
 
