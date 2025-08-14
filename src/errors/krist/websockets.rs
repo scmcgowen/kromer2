@@ -10,6 +10,9 @@ pub enum WebSocketError {
 
     #[error("Failed to create a WebSocket handshake")]
     HandshakeError,
+
+    #[error("WebSocket gateway token does not exist, go get a new one <3")]
+    TokenDoesNotExist,
 }
 
 impl error::ResponseError for WebSocketError {
@@ -34,6 +37,7 @@ impl KristErrorExt for WebSocketError {
         match self {
             WebSocketError::InvalidWebsocketToken => "invalid_websocket_token",
             WebSocketError::HandshakeError => "handshake_error",
+            WebSocketError::TokenDoesNotExist => "gateway_token_not_found",
         }
     }
 }

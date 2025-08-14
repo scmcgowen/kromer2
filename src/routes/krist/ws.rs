@@ -79,44 +79,15 @@ pub async fn gateway(
     let token = token.into_inner();
     tracing::info!("New client connected");
 
+    let uuid = Uuid::from_str(&token)
+        .map_err(|_| KristError::WebSocket(WebSocketError::InvalidWebsocketToken))?;
+
+    let data = server
+        .use_token(&uuid)
+        .await
+        .map_err(|_| KristError::WebSocket(WebSocketError::TokenDoesNotExist))?;
+
     let (response, mut session, stream) = actix_ws::handle(&req, body)?;
-
-    let uuid_result = Uuid::from_str(&token)
-        .map_err(|_| KristError::WebSocket(WebSocketError::InvalidWebsocketToken));
-
-    let uuid = match uuid_result {
-        Ok(uuid) => uuid,
-        Err(err) => {
-            let error = json!({
-                "ok": false,
-                "error": err.error_type(),
-                "message": err.to_string(),
-                "type": "error"
-            });
-
-            let _ = session.text(error.to_string()).await;
-
-            return Ok(response);
-        }
-    };
-
-    let data_result = server.use_token(&uuid).await;
-
-    let data = match data_result {
-        Ok(data) => data,
-        Err(_err) => {
-            let error = json!({
-                "ok": false,
-                "error": "invalid_websocket_token",
-                "message": "Invalid websocket token",
-                "type": "error"
-            });
-
-            let _ = session.text(error.to_string()).await;
-
-            return Ok(response);
-        }
-    };
 
     let mut stream = stream
         .max_frame_size(64 * 1024)
