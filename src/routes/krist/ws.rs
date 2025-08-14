@@ -13,7 +13,6 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::database::wallet::Model as Wallet;
-use crate::errors::krist::KristErrorExt;
 use crate::errors::krist::{KristError, address::AddressError, websockets::WebSocketError};
 use crate::models::krist::websockets::{WebSocketMessage, WebSocketMessageInner};
 use crate::websockets::types::common::WebSocketTokenData;
@@ -85,7 +84,7 @@ pub async fn gateway(
     let data = server
         .use_token(&uuid)
         .await
-        .map_err(|_| KristError::WebSocket(WebSocketError::TokenDoesNotExist))?;
+        .map_err(|_| KristError::WebSocket(WebSocketError::InvalidWebsocketToken))?;
 
     let (response, mut session, stream) = actix_ws::handle(&req, body)?;
 
