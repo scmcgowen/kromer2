@@ -2,6 +2,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Instant;
 
+use actix_web::http::header::HeaderValue;
 use actix_web::rt::time;
 use actix_web::{HttpRequest, get, post};
 use actix_web::{HttpResponse, web};
@@ -76,8 +77,11 @@ pub async fn gateway(
 ) -> Result<HttpResponse, actix_web::Error> {
     let server = server.into_inner(); // lol
     let token = token.into_inner();
-    tracing::info!("New client connected");
 
+    // TODO: Actually do what krist does, which is:
+    //       - Let websocket connect
+    //       - Send error over
+    //       - Close connection
     let uuid = Uuid::from_str(&token)
         .map_err(|_| KristError::WebSocket(WebSocketError::InvalidWebsocketToken))?;
 

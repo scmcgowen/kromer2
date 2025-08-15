@@ -33,7 +33,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         App::new()
             .app_data(state.clone())
             .app_data(web::Data::new(krist_ws_server.clone()))
-            .wrap(middleware::Logger::default())
+            .wrap(middleware::Logger::new(
+                r#"%a "%r" %s %b "%{Referer}i" "%{User-Agent}i" "%{X-CC-ID}i" %T"#,
+            ))
             .wrap(middleware::NormalizePath::trim())
             .wrap(cors)
             .configure(routes::config)
