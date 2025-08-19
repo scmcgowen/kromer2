@@ -2,7 +2,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Instant;
 
-use actix_web::http::header::HeaderValue;
 use actix_web::rt::time;
 use actix_web::{HttpRequest, get, post};
 use actix_web::{HttpResponse, web};

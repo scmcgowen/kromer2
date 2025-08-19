@@ -106,9 +106,10 @@ impl<'q> Model {
     }
 
     #[tracing::instrument(skip(pool))]
-    pub async fn verify_address<S>(pool: &Pool<Postgres>, private_key: S) -> Result<VerifyResponse>
+    pub async fn verify_address<A, S>(pool: A, private_key: S) -> Result<VerifyResponse>
     where
         S: AsRef<str> + std::fmt::Debug,
+        A: 'q + Acquire<'q, Database = Postgres>,
     {
         let private_key = private_key.as_ref();
         let mut tx = pool.acquire().await?;

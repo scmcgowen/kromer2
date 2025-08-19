@@ -172,7 +172,13 @@ async fn name_register(
         )));
     }
 
-    let verify_addr_resp = Wallet::verify_address(pool, &private_key).await?;
+    let mut tx = pool.begin().await?;
+
+    if let Some(name) = Name::fetch_by_name(&mut *tx, &name).await? {
+        return Err(KristError::Name(NameError::NameTaken(name.name)));
+    }
+
+    let verify_addr_resp = Wallet::verify_address(&mut *tx, &private_key).await?;
 
     if !verify_addr_resp.authed {
         tracing::info!(
@@ -196,7 +202,7 @@ async fn name_register(
         ..Default::default()
     };
 
-    let transaction = Transaction::create(pool, creation_data).await?;
+    let transaction = Transaction::create(&mut *tx, creation_data).await?;
     tracing::info!(
         "Created transaction for name purchase with ID {}",
         transaction.id
@@ -208,11 +214,13 @@ async fn name_register(
     websocket_server.broadcast_event(event).await;
 
     // Create the new name
-    let name = Name::create(pool, name.clone(), verify_addr_resp.model.address).await?;
+    let name = Name::create(&mut *tx, name.clone(), verify_addr_resp.model.address).await?;
     let response = NameResponse {
         ok: true,
         name: name.into(),
     };
+
+    tx.commit().await?;
 
     Ok(HttpResponse::Ok().json(response))
 }
