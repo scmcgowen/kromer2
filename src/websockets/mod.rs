@@ -169,7 +169,7 @@ impl WebSocketServer {
                     WebSocketEvent::Block { .. } => todo!(),
                     WebSocketEvent::Transaction { transaction } => {
                         let mut subs = client_data.subscriptions.iter();
-                        let transaction_from = transaction.from.clone().unwrap_or("".to_string());
+                        let transaction_from = transaction.from.as_deref().unwrap_or_default();
                         if (!client_data.is_guest()
                             && (client_data.address == transaction.to
                                 || client_data.address == transaction_from)
