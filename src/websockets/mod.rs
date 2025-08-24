@@ -152,6 +152,7 @@ impl WebSocketServer {
     }
 
     /// Broadcast an event to all connected clients
+    #[tracing::instrument(skip_all)]
     pub async fn broadcast_event(&self, event: WebSocketMessage) {
         let msg =
             serde_json::to_string(&event).expect("Failed to turn event message into a string");
@@ -177,7 +178,9 @@ impl WebSocketServer {
                         {
                             let result = client_data.session.text(msg.clone()).await;
                             if result.is_err() {
-                                tracing::warn!("Got an unexpected closed session");
+                                tracing::warn!(
+                                    "Got an unexpected closed session in transactions branch"
+                                );
 
                                 self.cleanup_session(uuid).await;
                             }
@@ -192,7 +195,7 @@ impl WebSocketServer {
                         {
                             let result = client_data.session.text(msg.clone()).await;
                             if result.is_err() {
-                                tracing::warn!("Got an unexpected closed session");
+                                tracing::warn!("Got an unexpected closed session in name branch");
 
                                 self.cleanup_session(uuid).await;
                             }
@@ -204,6 +207,7 @@ impl WebSocketServer {
     }
 
     /// Broadcast a message to all connected clients
+    #[tracing::instrument(skip_all)]
     pub async fn broadcast(&self, msg: impl Into<ByteString>) {
         let msg = msg.into();
         tracing::debug!("Sending msg: {msg}");
