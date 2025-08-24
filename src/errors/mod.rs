@@ -58,7 +58,12 @@ impl error::ResponseError for KromerError {
             KromerError::Wallet(e) => e.status_code(),
             KromerError::Transaction(e) => e.status_code(),
             KromerError::Name(e) => e.status_code(),
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
+            KromerError::Player(e) => e.status_code(),
+            KromerError::Validation(_) => StatusCode::BAD_REQUEST,
+            KromerError::WebSocket(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            KromerError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            KromerError::IO(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            KromerError::JsonPayload(e) => e.status_code(),
         }
     }
 
@@ -72,7 +77,12 @@ impl error::ResponseError for KromerError {
                 KromerError::Wallet(..) => "wallet_error",
                 KromerError::Transaction(..) => "transaction_error",
                 KromerError::Player(..) => "player_error",
-                _ => "internal_server_error",
+                KromerError::Validation(_) => "validation_error",
+                KromerError::Name(_) => "name_error",
+                KromerError::WebSocket(_) => "websocket_error",
+                KromerError::Internal(_) => "internal_error",
+                KromerError::IO(_) => "io_error",
+                KromerError::JsonPayload(_) => "json_payload_error",
             },
             message: &message,
             details: &[],
