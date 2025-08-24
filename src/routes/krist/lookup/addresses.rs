@@ -18,7 +18,7 @@ async fn addresses_lookup(
     let addresses = addresses.into_inner();
     let params = params.into_inner();
 
-    let addresses: Vec<&str> = addresses.split(',').map(|s| s).collect();
+    let addresses: Vec<&str> = addresses.split(',').collect();
     let address_count = addresses.len();
 
     let fetch_names = params.fetch_names.unwrap_or(false);

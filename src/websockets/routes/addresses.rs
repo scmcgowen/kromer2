@@ -37,7 +37,7 @@ pub async fn get_address(
                 id: msg_id,
                 r#type: WebSocketMessageInner::Error {
                     error: "address_not_found".to_owned(),
-                    message: format!("Address {} not found", address),
+                    message: format!("Address {address} not found"),
                 },
             };
         }

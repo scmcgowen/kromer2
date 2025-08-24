@@ -294,7 +294,7 @@ async fn name_transfer(
         name: updated_name.into(),
     };
 
-    return Ok(HttpResponse::Ok().json(response));
+    Ok(HttpResponse::Ok().json(response))
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {

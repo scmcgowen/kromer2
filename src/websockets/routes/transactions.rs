@@ -83,7 +83,7 @@ pub async fn make_transaction(
                 id: msg_id,
                 r#type: WebSocketMessageInner::Error {
                     error: "address_not_found".to_owned(),
-                    message: format!("Address {} not found", to),
+                    message: format!("Address {to} not found"),
                 },
             };
         }

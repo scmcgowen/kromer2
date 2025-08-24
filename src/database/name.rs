@@ -165,7 +165,7 @@ impl<'q> Model {
             }
         };
 
-        if !validation::is_valid_name(&name, false) {
+        if !validation::is_valid_name(name, false) {
             return Err(DatabaseError::Generic(GenericError::InvalidParameter(
                 "name".to_owned(),
             )));

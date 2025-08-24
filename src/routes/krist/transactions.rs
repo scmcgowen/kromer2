@@ -94,7 +94,7 @@ async fn transaction_create(
     let recipient = match is_name {
         true => {
             // Cursed but makes borrow checker happy, lol.
-            let name = sent_name.as_ref().map(|a| a.as_str()).unwrap_or_default();
+            let name = sent_name.as_deref().unwrap_or_default();
 
             let name = Name::fetch_by_name(&mut *tx, name)
                 .await?

@@ -89,7 +89,7 @@ impl From<transaction::Model> for TransactionJson {
             metadata: transaction.metadata,
             sent_metaname: transaction.sent_metaname,
             sent_name: transaction.sent_name,
-            transaction_type: transaction.transaction_type.into(),
+            transaction_type: transaction.transaction_type,
             name: transaction.name,
         }
     }

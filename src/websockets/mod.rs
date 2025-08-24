@@ -90,7 +90,7 @@ impl WebSocketServer {
 
             // I don't think that this if statement would ever fail? considering we literally just put the fucking token in the map, lol.
             let inner_mutex = inner_clone.lock().await;
-            if let Some(_) = inner_mutex.pending_tokens.remove(&uuid) {
+            if inner_mutex.pending_tokens.remove(&uuid).is_some() {
                 tracing::info!("Removed expired token {uuid}");
             }
         });

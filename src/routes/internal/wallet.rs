@@ -83,7 +83,7 @@ async fn wallet_give_money(
     let creation_data = TransactionCreateData {
         from: "serverwelf".into(),
         to: data.address,
-        amount: amount,
+        amount,
         transaction_type: TransactionType::Mined,
         ..Default::default()
     };
@@ -110,7 +110,7 @@ async fn wallet_get_by_uuid(
 
     let mut tx = pool.begin().await?;
 
-    let player = Player::fetch_by_id(&mut *tx, &uuid)
+    let player = Player::fetch_by_id(&mut *tx, uuid)
         .await?
         .ok_or_else(|| KromerError::Player(PlayerError::NotFound))?;
     let owned_wallets = player.owned_wallets(&mut *tx).await?;

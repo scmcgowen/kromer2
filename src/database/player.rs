@@ -78,7 +78,7 @@ impl<'q> Model {
         let q = "UPDATE players SET owned_wallets = array_append(owned_wallets, $2) WHERE id = $1 RETURNING *;";
 
         sqlx::query_as(q)
-            .bind(&self.id)
+            .bind(self.id)
             .bind(wallet.id)
             .fetch_one(executor)
             .await

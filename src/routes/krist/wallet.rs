@@ -84,7 +84,7 @@ async fn wallet_richest(
         ok: true,
         count: addresses.len(),
         total,
-        addresses: addresses,
+        addresses,
     };
 
     Ok(HttpResponse::Ok().json(response))
@@ -141,7 +141,7 @@ async fn wallet_get_names(
 
     let wallet = Wallet::fetch_by_address(&mut *tx, &address)
         .await
-        .map_err(|err| KristError::from(err))?
+        .map_err(KristError::from)?
         .ok_or_else(|| KristError::Address(AddressError::NotFound(address)))?;
 
     let total_names = Name::total_count(&mut *tx).await?;
