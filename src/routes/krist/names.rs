@@ -266,10 +266,15 @@ async fn name_transfer(
     if !current_owner_response.authed {
         return Err(KristError::Address(AddressError::AuthFailed));
     }
+    let current_owner = current_owner_response.model;
 
     let name = Name::fetch_by_name(pool, &name)
         .await?
         .ok_or_else(|| KristError::Name(NameError::NameNotFound(name)))?;
+    if name.owner != current_owner.address {
+        return Err(KristError::Name(NameError::NotNameOwner(name.name)));
+    }
+
     if name.owner == details.address {
         tracing::debug!("Disallowed bumping name, returning original data");
         let response = NameResponse {
