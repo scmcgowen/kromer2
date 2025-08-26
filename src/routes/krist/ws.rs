@@ -113,6 +113,9 @@ pub async fn gateway(
             interval.tick().await;
             if session2.ping(b"").await.is_err() {
                 tracing::error!("Failed to send ping message to session");
+
+                let _ = session2.close(None).await;
+                server2.cleanup_session(&uuid).await;
                 break;
             }
 
