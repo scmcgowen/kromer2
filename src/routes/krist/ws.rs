@@ -1,5 +1,6 @@
 use std::str::FromStr;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 use actix_web::rt::time;
@@ -99,23 +100,53 @@ pub async fn gateway(
     server.insert_session(uuid, session.clone(), data).await; // Not a big fan of cloning but here it is needed.
 
     let alive = Arc::new(Mutex::new(Instant::now()));
+    let session_closed = Arc::new(AtomicBool::new(false));
+
     let mut session2 = session.clone();
     let server2 = server.clone();
+
     let alive2 = alive.clone();
+    let session_closed2 = session_closed.clone();
 
     handler::send_hello_message(&mut session).await;
 
+    let cleanup_session =
+        |server: Arc<WebSocketServer>, uuid: Uuid, session_closed: Arc<AtomicBool>| async move {
+            if session_closed
+                .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+                .is_ok()
+            {
+                server.cleanup_session(&uuid).await;
+            }
+        };
+
     // Heartbeat handling
-    actix_web::rt::spawn(async move {
+    let heartbeat_handle = actix_web::rt::spawn(async move {
         let mut interval = time::interval(HEARTBEAT_INTERVAL);
 
         loop {
             interval.tick().await;
+
+            if session_closed2.load(Ordering::SeqCst) {
+                tracing::debug!("Session was closed, breaking out of heartbeat handle");
+                break;
+            }
+
+            if Instant::now().duration_since(*alive2.lock().await) > CLIENT_TIMEOUT {
+                tracing::info!("Session timed out");
+                let _ = session2.close(None).await;
+
+                cleanup_session(server2, uuid, session_closed2).await;
+
+                break;
+            }
+
             if session2.ping(b"").await.is_err() {
-                tracing::error!("Failed to send ping message to session");
+                tracing::warn!("Failed to send ping message to session, cleaning it up");
 
                 let _ = session2.close(None).await;
-                server2.cleanup_session(&uuid).await;
+                cleanup_session(server2, uuid, session_closed2).await;
+
                 break;
             }
 
@@ -130,13 +161,10 @@ pub async fn gateway(
 
             let return_message =
                 serde_json::to_string(&message).unwrap_or_else(|_| "{}".to_string()); // ...what
-            let _ = session2.text(return_message).await;
-
-            if Instant::now().duration_since(*alive2.lock().await) > CLIENT_TIMEOUT {
-                tracing::info!("Session {uuid} timed out");
+            if session2.text(return_message).await.is_err() {
+                tracing::debug!("Failed to send keepalive to session");
                 let _ = session2.close(None).await;
-                server2.cleanup_session(&uuid).await;
-
+                cleanup_session(server2, uuid, session_closed2).await;
                 break;
             }
         }
@@ -202,7 +230,9 @@ pub async fn gateway(
         }
 
         let _ = session.close(None).await;
-        server.cleanup_session(&uuid).await;
+        cleanup_session(server, uuid, session_closed).await;
+
+        heartbeat_handle.abort();
     });
 
     Ok(response)
