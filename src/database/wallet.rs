@@ -227,6 +227,18 @@ impl<'q> Model {
             .await
     }
 
+    /// Return the total amount of names owned by an address
+    pub async fn names_owned<E>(&self, pool: E) -> sqlx::Result<i64>
+    where
+        E: 'q + Executor<'q, Database = Postgres>,
+    {
+        let q = "SELECT COUNT(*) FROM names WHERE owner = $1";
+        sqlx::query_scalar(q)
+            .bind(&self.address)
+            .fetch_one(pool)
+            .await
+    }
+
     pub async fn set_balance<E>(&self, executor: E, balance: Decimal) -> Result<Model, KromerError>
     where
         E: 'q + Executor<'q, Database = Postgres>,

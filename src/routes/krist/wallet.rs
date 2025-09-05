@@ -2,7 +2,7 @@ use actix_web::{HttpResponse, get, web};
 
 use crate::AppState;
 
-use crate::database::{ModelExt, name::Model as Name, wallet::Model as Wallet};
+use crate::database::{ModelExt, wallet::Model as Wallet};
 use crate::errors::krist::KristError;
 use crate::errors::krist::address::AddressError;
 use crate::models::krist::addresses::{
@@ -144,7 +144,7 @@ async fn wallet_get_names(
         .map_err(KristError::from)?
         .ok_or_else(|| KristError::Address(AddressError::NotFound(address)))?;
 
-    let total_names = Name::total_count(&mut *tx).await?;
+    let names_owned = wallet.names_owned(&mut *tx).await?;
     let names = wallet.names(&mut *tx, &query).await?;
 
     tx.commit().await?;
@@ -153,7 +153,7 @@ async fn wallet_get_names(
     let response = NameListResponse {
         ok: true,
         count: names.len(),
-        total: total_names,
+        total: names_owned as usize,
         names,
     };
 
