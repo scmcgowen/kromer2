@@ -21,7 +21,7 @@ pub enum WebSocketMessageInner {
         motd: Box<DetailedMotd>,
     },
     Keepalive {
-        server_time: String,
+        server_time: Option<String>,
     },
     Response {
         #[serde(flatten)]

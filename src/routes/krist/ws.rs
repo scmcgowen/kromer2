@@ -155,7 +155,7 @@ pub async fn gateway(
                 ok: None,
                 id: None,
                 r#type: WebSocketMessageInner::Keepalive {
-                    server_time: cur_time,
+                    server_time: Some(cur_time),
                 },
             };
 
