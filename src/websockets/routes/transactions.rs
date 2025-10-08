@@ -24,7 +24,7 @@ pub async fn make_transaction(
 ) -> WebSocketMessage {
     let amount = amount.round_dp(2); // Make sure we do not support 2 decimals after the dot.
 
-    if amount < dec!(0.00) {
+    if amount <= dec!(0.00) {
         return WebSocketMessage {
             ok: Some(false),
             id: msg_id,

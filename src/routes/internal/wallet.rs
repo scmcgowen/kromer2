@@ -69,7 +69,7 @@ async fn wallet_give_money(
     let data = data.into_inner();
     let amount = data.amount.round_dp(2);
 
-    if amount < dec!(0.00) {
+    if amount <= dec!(0.00) {
         return Err(KromerError::Validation("Invalid amount".into()));
     }
 
