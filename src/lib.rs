@@ -29,6 +29,9 @@ pub struct Args {
     /// Sets the Internal Key
     #[arg(long)]
     pub key: Option<String>,
+    /// Force Websocket to use the insecure "ws://" protocol
+    #[arg(short, long)]
+    pub insecure: bool,
 }
 
 pub fn init_args(args: Args) {
